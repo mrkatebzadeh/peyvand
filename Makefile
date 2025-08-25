@@ -9,7 +9,7 @@ OBJ = $(SRC:.c=.o)
 WEBEXTSRC = libsurf-webext.c
 WEBEXTOBJ = $(WEBEXTSRC:.c=.o)
 
-all: options libsurf-webext.so surf
+all: options libsurf-webext.so peyvand
 
 options:
 	@echo surf build options:
@@ -32,11 +32,11 @@ $(WEBEXTOBJ): $(WEBEXTSRC) config.h common.h config.mk
 libsurf-webext.so: $(WEBEXTOBJ)
 	$(CC) -shared -Wl,-soname,$@ $(LDFLAGS) -o $@ $< $(WEBEXTLIBS) -lc
 
-surf: $(OBJ)
+peyvand: $(OBJ)
 	$(CC) $(SURFLDLAGS) $(LDFLAGS) -o $@ $(OBJ) $(LIBS)
 
 clean:
-	rm -f surf $(OBJ)
+	rm -f peyvand $(OBJ)
 	rm -f libsurf-webext.so $(WEBEXTOBJ)
 
 distclean: clean
@@ -53,8 +53,8 @@ dist: distclean
 
 install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp -f surf $(DESTDIR)$(PREFIX)/bin
-	chmod 755 $(DESTDIR)$(PREFIX)/bin/surf
+	cp -f peyvand $(DESTDIR)$(PREFIX)/bin
+	chmod 755 $(DESTDIR)$(PREFIX)/bin/peyvand
 	mkdir -p $(DESTDIR)$(LIBDIR)
 	cp -f libsurf-webext.so $(DESTDIR)$(LIBDIR)
 	chmod 644 $(DESTDIR)$(LIBDIR)/libsurf-webext.so
@@ -63,7 +63,7 @@ install: all
 	chmod 644 $(DESTDIR)$(MANPREFIX)/man1/surf.1
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/surf
+	rm -f $(DESTDIR)$(PREFIX)/bin/peyvand
 	rm -f $(DESTDIR)$(MANPREFIX)/man1/surf.1
 	rm -f $(DESTDIR)$(LIBDIR)/libsurf-webext.so
 	rmdir $(DESTDIR)$(LIBDIR)
