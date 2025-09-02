@@ -20,10 +20,11 @@
 */
 
 mod args;
+mod signal;
 
-use std::sync::Arc;
+use signal::setup_signal_handlers;
 use spdlog::{Level, LevelFilter, Logger, debug, info};
-
+use std::sync::Arc;
 
 fn main() -> anyhow::Result<()> {
     let default_logger: Arc<Logger> = spdlog::default_logger();
@@ -40,8 +41,12 @@ fn main() -> anyhow::Result<()> {
 
     default_logger.set_level_filter(LevelFilter::MoreSevereEqual(level));
 
-    info!("Peyvand started.");
+    let pid = std::process::id();
+    info!("Started: Peyvand, PID: {}", pid);
     debug!("{:#?}", args);
+
+    setup_signal_handlers()?;
+    debug!("Finished: setup signals");
 
     Ok(())
 }
