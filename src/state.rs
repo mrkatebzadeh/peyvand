@@ -19,15 +19,16 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use crate::history::History;
+use crate::history::{self, History};
 use dpi::{LogicalPosition, LogicalSize};
-use winit::{
-    application::ApplicationHandler,
+use spdlog::debug;
+use tao::{
     event::WindowEvent,
-    event_loop::ActiveEventLoop,
-    window::{Window, WindowId},
+    event_loop::EventLoop,
+    window::{Window, WindowBuilder},
 };
-use wry::{Rect, WebViewBuilder};
+
+use wry::WebViewBuilder;
 
 #[derive(Default)]
 pub struct State {
@@ -37,63 +38,82 @@ pub struct State {
 }
 
 impl State {
-    pub fn set_url<S: AsRef<str>>(&mut self, url: S) {
-        self.history.push(url.as_ref());
+    pub fn new<T, S: AsRef<str>>(event_loop: &EventLoop<T>, url: S) -> anyhow::Result<Self> {
+        let window = WindowBuilder::new().build(event_loop)?;
+
+        let builder = WebViewBuilder::new()
+            .with_url(url.as_ref())
+            .with_new_window_req_handler(|url, features| {
+                debug!("new window req: {url} {features:?}");
+                wry::NewWindowResponse::Allow
+            });
+
+        #[cfg(feature = "drag-drop")]
+        let builder = builder.with_drag_drop_handler(|e| {
+            match e {
+                wry::DragDropEvent::Enter { paths, position } => {
+                    println!("DragEnter: {position:?} {paths:?} ")
+                }
+                wry::DragDropEvent::Over { position } => println!("DragOver: {position:?} "),
+                wry::DragDropEvent::Drop { paths, position } => {
+                    println!("DragDrop: {position:?} {paths:?} ")
+                }
+                wry::DragDropEvent::Leave => println!("DragLeave"),
+                _ => {}
+            }
+
+            true
+        });
+
+        #[cfg(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "android"
+        ))]
+        let webview = builder.build(&window)?;
+        #[cfg(not(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "android"
+        )))]
+        let webview = {
+            use tao::platform::unix::WindowExtUnix;
+            use wry::WebViewBuilderExtUnix;
+            let vbox = window.default_vbox().unwrap();
+            builder.build_gtk(vbox)?
+        };
+
+        let history = History::new(url.as_ref());
+        Ok(Self {
+            webview: Some(webview),
+            window: Some(window),
+            history,
+        })
     }
 }
 
-impl ApplicationHandler for State {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let mut attributes = Window::default_attributes();
-        attributes.inner_size = Some(LogicalSize::new(800, 800).into());
-        let window = event_loop.create_window(attributes).unwrap();
-
-        let webview = WebViewBuilder::new()
-            .with_url(self.history.current())
-            .build_as_child(&window)
-            .unwrap();
-
-        self.window = Some(window);
-        self.webview = Some(webview);
-    }
-
-    fn window_event(
-        &mut self,
-        _event_loop: &ActiveEventLoop,
-        _window_id: WindowId,
-        event: WindowEvent,
-    ) {
-        match event {
-            WindowEvent::Resized(size) => {
-                let window = self.window.as_ref().unwrap();
-                let webview = self.webview.as_ref().unwrap();
-
-                let size = size.to_logical::<u32>(window.scale_factor());
-                webview
-                    .set_bounds(Rect {
-                        position: LogicalPosition::new(0, 0).into(),
-                        size: LogicalSize::new(size.width, size.height).into(),
-                    })
-                    .unwrap();
-            }
-            WindowEvent::CloseRequested => {
-                std::process::exit(0);
-            }
-            _ => {}
+impl State {
+    pub fn set_url<S: AsRef<str>>(&mut self, url: S) {
+        self.history.push(url.as_ref());
+        if let Some(webview) = &self.webview {
+            webview.load_url(url.as_ref()).unwrap();
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        #[cfg(any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd",
-        ))]
-        {
-            while gtk::events_pending() {
-                gtk::main_iteration_do(false);
+    pub fn go_back(&mut self) {
+        if let Some(previous_url) = self.history.back() {
+            if let Some(webview) = &self.webview {
+                webview.load_url(previous_url).unwrap();
+            }
+        }
+    }
+
+    pub fn go_forward(&mut self) {
+        if let Some(next_url) = self.history.forward() {
+            if let Some(webview) = &self.webview {
+                webview.load_url(next_url).unwrap();
             }
         }
     }

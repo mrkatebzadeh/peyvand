@@ -20,7 +20,10 @@
 */
 
 use crate::{args::Args, state::State};
-use winit::event_loop::EventLoop;
+use tao::{
+    event::{Event, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
+};
 
 pub struct Application {
     args: Args,
@@ -29,32 +32,19 @@ pub struct Application {
 
 impl Application {
     pub fn start(&mut self) -> anyhow::Result<()> {
-        #[cfg(any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd",
-        ))]
-        {
-            use gtk::prelude::DisplayExtManual;
+        let event_loop = EventLoop::new();
+        let state = State::new(&event_loop, &self.args.url)?;
+        event_loop.run(move |event, _, control_flow| {
+            *control_flow = ControlFlow::Wait;
 
-            gtk::init().unwrap();
-            if gtk::gdk::Display::default().unwrap().backend().is_wayland() {
-                panic!("This example doesn't support wayland!");
+            if let Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } = event
+            {
+                *control_flow = ControlFlow::Exit;
             }
-
-            winit::platform::x11::register_xlib_error_hook(Box::new(|_display, error| {
-                let error = error as *mut x11_dl::xlib::XErrorEvent;
-                (unsafe { (*error).error_code }) == 170
-            }));
-        }
-
-        let event_loop = EventLoop::new().unwrap();
-        let mut state = State::default();
-        state.set_url(&self.args.url);
-        event_loop.run_app(&mut state).unwrap();
-        Ok(())
+        });
     }
 }
 
