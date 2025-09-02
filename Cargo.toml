@@ -1,0 +1,8 @@
+[package]
+name = "peyvand"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "=4.5.*", features = ["derive"] }
+spdlog-rs = "0.4.*"
