@@ -24,7 +24,7 @@ use signal_hook::{consts::signal::*, iterator::Signals};
 use std::thread;
 
 pub fn setup_signal_handlers() -> anyhow::Result<()> {
-    let mut signals = Signals::new(&[SIGHUP, SIGCHLD])?;
+    let mut signals = Signals::new([SIGHUP, SIGCHLD])?;
     thread::spawn(move || {
         for signal in signals.forever() {
             match signal {

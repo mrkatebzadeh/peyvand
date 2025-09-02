@@ -19,9 +19,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+mod app;
 mod args;
+mod history;
 mod signal;
+mod state;
 
+use app::Application;
 use signal::setup_signal_handlers;
 use spdlog::{Level, LevelFilter, Logger, debug, info};
 use std::sync::Arc;
@@ -48,7 +52,8 @@ fn main() -> anyhow::Result<()> {
     setup_signal_handlers()?;
     debug!("Finished: setup signals");
 
-    Ok(())
+    let mut app = Application::new(args);
+    app.start()
 }
 
 /* main.rs ends here */
