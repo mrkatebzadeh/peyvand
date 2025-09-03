@@ -25,6 +25,7 @@ pub enum KeyMode {
     Normal,
     Insert,
     Search,
+    Command,
 }
 
 /* key.rs ends here */

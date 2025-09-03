@@ -29,5 +29,6 @@ pub enum Command {
     #[default]
     ModeNormal,
     ModeInsert,
+    ModeCommand,
 }
 /* command.rs ends here */

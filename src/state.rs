@@ -19,11 +19,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use std::sync::mpsc;
+use std::{fs, sync::mpsc};
 use wry::http::Request;
 
 use crate::{command::Command, history::History, key::KeyMode};
-use spdlog::debug;
+use spdlog::{debug, error};
 use std::sync::mpsc::Sender;
 use tao::{
     event_loop::EventLoop,
@@ -32,59 +32,45 @@ use tao::{
 use wry::WebViewBuilder;
 
 const SCROLL_STEP: i32 = 40;
-const KEYBINDING_JS: &str = r#"
-                window.appState = { mode: 'Normal' };
-            document.addEventListener('keydown', (e) => {
-                e.stopPropagation();
-
-                const mode = window.appState.mode;
-            if (mode === 'Normal') {
-                if (e.key === 'h') {
-                    window.ipc.postMessage('go-back');
-                    e.preventDefault();
-                } else if (e.key === 'l') {
-                    window.ipc.postMessage('go-forward');
-                    e.preventDefault();
-                } else if (e.key === 'j') {
-                    window.ipc.postMessage('scroll-down');
-                    e.preventDefault();
-                } else if (e.key === 'k') {
-                    window.ipc.postMessage('scroll-up');
-                    e.preventDefault();
-                } else if (e.key === 'i') {
-                    window.ipc.postMessage('mode-insert');
-                    e.preventDefault();
-                }
-            } else if (mode === 'Insert') {
-                if (e.key === 'Escape') {
-                    window.ipc.postMessage('mode-normal');
-                    e.preventDefault();
-                }
-            }
-            });
-        "#;
+const KEYBINDING_JS: &str = include_str!("./keybindings.js");
 
 fn make_ipc_handler(tx: Sender<Command>) -> impl Fn(Request<String>) + 'static {
-    move |req: Request<String>| match req.body().as_ref() {
-        "go-back" => {
-            tx.send(Command::GoBack).ok();
-        }
-        "go-forward" => {
-            tx.send(Command::GoForward).ok();
-        }
-        "mode-normal" => {
+    move |req: Request<String>| {
+        if let Some(cmd) = req.body().strip_prefix("command:") {
             tx.send(Command::ModeNormal).ok();
+            match cmd {
+                "q" => {
+                    tx.send(Command::Exit).ok();
+                }
+                _ => {
+                    error!("Unknown command: {}", cmd);
+                }
+            };
         }
-        "mode-insert" => {
-            tx.send(Command::ModeInsert).ok();
+        match req.body().as_ref() {
+            "go-back" => {
+                tx.send(Command::GoBack).ok();
+            }
+            "go-forward" => {
+                tx.send(Command::GoForward).ok();
+            }
+            "mode-normal" => {
+                tx.send(Command::ModeNormal).ok();
+            }
+            "mode-insert" => {
+                tx.send(Command::ModeInsert).ok();
+            }
+            "mode-command" => {
+                tx.send(Command::ModeCommand).ok();
+            }
+            "scroll-down" => {
+                tx.send(Command::ScrollDown).ok();
+            }
+            "scroll-up" => {
+                tx.send(Command::ScrollUp).ok();
+            }
+            _ => {}
         }
-        "scroll-down" => {
-            tx.send(Command::ScrollDown).ok();
-        }
-        "scroll-up" => {
-            tx.send(Command::ScrollUp).ok();
-        }
-        _ => {}
     }
 }
 
@@ -170,6 +156,7 @@ impl State {
                 KeyMode::Normal => "Normal",
                 KeyMode::Insert => "Insert",
                 KeyMode::Search => "Search",
+                KeyMode::Command => "Command",
             }
         );
 

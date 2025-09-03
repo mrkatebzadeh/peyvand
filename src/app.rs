@@ -24,7 +24,7 @@ use std::sync::Mutex;
 use crate::command::Command;
 use crate::key::KeyMode;
 use crate::{args::Args, state::State};
-use spdlog::{debug, info};
+use spdlog::{debug, error, info};
 use tao::event::DeviceEvent::Key;
 use tao::{
     event::{Event, StartCause, WindowEvent},
@@ -50,6 +50,7 @@ impl Application {
             while let Ok(cmd) = cmd_rx.try_recv() {
                 let mode = state.lock().unwrap().get_key_mode();
                 debug!("Command: {:#?}", cmd);
+
                 match mode {
                     KeyMode::Normal => match cmd {
                         Command::GoBack => state.lock().unwrap().go_back(),
@@ -60,10 +61,18 @@ impl Application {
 
                         Command::ModeNormal => state.lock().unwrap().set_key_mode(KeyMode::Normal),
                         Command::ModeInsert => state.lock().unwrap().set_key_mode(KeyMode::Insert),
+                        Command::ModeCommand => {
+                            state.lock().unwrap().set_key_mode(KeyMode::Command)
+                        }
                         Command::Exit => *control_flow = ControlFlow::Exit,
                         _ => todo!(),
                     },
                     KeyMode::Insert => {
+                        if let Command::ModeNormal = cmd {
+                            state.lock().unwrap().set_key_mode(KeyMode::Normal);
+                        }
+                    }
+                    KeyMode::Command => {
                         if let Command::ModeNormal = cmd {
                             state.lock().unwrap().set_key_mode(KeyMode::Normal);
                         }
