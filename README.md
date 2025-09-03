@@ -1,4 +1,4 @@
-# Peyvand 🌿
+# Peyvand 🕸️
 A **Surf-inspired web browser** built with **Vim-style modal key bindings** in mind.
 
 ---
