@@ -160,7 +160,6 @@ impl State {
             }
         );
 
-        self.status_bar.set_title(&format!("Mode: {mode}"));
         debug!("Mode: {:#?}", mode);
         let _ = self.webview.evaluate_script(&script);
     }

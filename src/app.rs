@@ -48,63 +48,56 @@ impl Application {
                 state.lock().unwrap().set_url(url);
             }
             while let Ok(cmd) = cmd_rx.try_recv() {
-                let mode = state.lock().unwrap().get_key_mode();
-                debug!("Command: {:#?}", cmd);
-
-                match mode {
-                    KeyMode::Normal => match cmd {
-                        Command::GoBack => state.lock().unwrap().go_back(),
-                        Command::GoForward => state.lock().unwrap().go_forward(),
-
-                        Command::ScrollDown => state.lock().unwrap().scroll_down(),
-                        Command::ScrollUp => state.lock().unwrap().scroll_up(),
-
-                        Command::ModeNormal => state.lock().unwrap().set_key_mode(KeyMode::Normal),
-                        Command::ModeInsert => state.lock().unwrap().set_key_mode(KeyMode::Insert),
-                        Command::ModeCommand => {
-                            state.lock().unwrap().set_key_mode(KeyMode::Command)
-                        }
-                        Command::Exit => *control_flow = ControlFlow::Exit,
-                        _ => todo!(),
-                    },
-                    KeyMode::Insert => {
-                        if let Command::ModeNormal = cmd {
-                            state.lock().unwrap().set_key_mode(KeyMode::Normal);
-                        }
-                    }
-                    KeyMode::Command => {
-                        if let Command::ModeNormal = cmd {
-                            state.lock().unwrap().set_key_mode(KeyMode::Normal);
-                        }
-                    }
-                    _ => unimplemented!(),
-                }
+                dispatch_cmd(&state, control_flow, cmd);
             }
-            match event {
-                Event::NewEvents(StartCause::Init) => info!("Webview started"),
-                Event::WindowEvent {
-                    event: WindowEvent::CloseRequested,
-                    ..
-                } => {
-                    info!("Peyvand exiting");
-                    *control_flow = ControlFlow::Exit
-                }
-                Event::DeviceEvent {
-                    device_id,
-                    event: Key(raw_key),
-                    ..
-                } => {
-                    info!("A key is pressed: {:#?}", raw_key);
-                    match raw_key.physical_key {
-                        KeyCode::KeyH => {
-                            info!("h is pressed");
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {}
-            }
+            handle_event(event, control_flow);
         });
+    }
+}
+
+fn handle_event(event: Event<'_, ()>, control_flow: &mut ControlFlow) {
+    match event {
+        Event::NewEvents(StartCause::Init) => info!("Webview started"),
+        Event::WindowEvent {
+            event: WindowEvent::CloseRequested,
+            ..
+        } => {
+            info!("Peyvand exiting");
+            *control_flow = ControlFlow::Exit
+        }
+        _ => {}
+    }
+}
+
+fn dispatch_cmd(state: &Mutex<State>, control_flow: &mut ControlFlow, cmd: Command) {
+    let mode = state.lock().unwrap().get_key_mode();
+    debug!("Command: {:#?}", cmd);
+
+    match mode {
+        KeyMode::Normal => match cmd {
+            Command::GoBack => state.lock().unwrap().go_back(),
+            Command::GoForward => state.lock().unwrap().go_forward(),
+
+            Command::ScrollDown => state.lock().unwrap().scroll_down(),
+            Command::ScrollUp => state.lock().unwrap().scroll_up(),
+
+            Command::ModeNormal => state.lock().unwrap().set_key_mode(KeyMode::Normal),
+            Command::ModeInsert => state.lock().unwrap().set_key_mode(KeyMode::Insert),
+            Command::ModeCommand => state.lock().unwrap().set_key_mode(KeyMode::Command),
+            Command::Exit => *control_flow = ControlFlow::Exit,
+            _ => todo!(),
+        },
+        KeyMode::Insert => {
+            if let Command::ModeNormal = cmd {
+                state.lock().unwrap().set_key_mode(KeyMode::Normal);
+            }
+        }
+        KeyMode::Command => {
+            if let Command::ModeNormal = cmd {
+                state.lock().unwrap().set_key_mode(KeyMode::Normal);
+            }
+        }
+        _ => unimplemented!(),
     }
 }
 
