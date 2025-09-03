@@ -11,4 +11,4 @@ signal-hook = {version = "0.3.*", features = ["extended-siginfo"] }
 libc = "0.2.*"
 tao = "0.34.*"
 wry = "0.53.*"
-dpi = "0.1"
+wgpu = "26.0.*"

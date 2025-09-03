@@ -19,7 +19,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use std::{fs, sync::mpsc};
+use std::sync::mpsc;
 use wry::http::Request;
 
 use crate::{command::Command, history::History, key::KeyMode};
@@ -82,10 +82,10 @@ fn make_navigation_handler(nav_tx: Sender<String>) -> impl Fn(String) -> bool + 
 }
 
 pub struct State {
-    window: Window,
-    webview: wry::WebView,
-    history: History,
-    key_mode: KeyMode,
+    pub window: Window,
+    pub webview: wry::WebView,
+    pub history: History,
+    pub key_mode: KeyMode,
 }
 
 impl State {
@@ -151,8 +151,8 @@ impl State {
         self.key_mode = mode;
 
         let script = format!(
-            "window.appState = {{ mode: '{}' }};",
-            match mode {
+            "window.appState = {{ mode: '{mode}' }};",
+            mode = match mode {
                 KeyMode::Normal => "Normal",
                 KeyMode::Insert => "Insert",
                 KeyMode::Search => "Search",
@@ -160,6 +160,7 @@ impl State {
             }
         );
 
+        self.status_bar.set_title(&format!("Mode: {mode}"));
         debug!("Mode: {:#?}", mode);
         let _ = self.webview.evaluate_script(&script);
     }

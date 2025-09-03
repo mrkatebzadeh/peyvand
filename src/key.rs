@@ -19,6 +19,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+use std::fmt::Display;
+
 #[derive(Default, Clone, Copy, Debug)]
 pub enum KeyMode {
     #[default]
@@ -26,6 +28,18 @@ pub enum KeyMode {
     Insert,
     Search,
     Command,
+}
+
+impl Display for KeyMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            KeyMode::Normal => "Normal",
+            KeyMode::Insert => "Insert",
+            KeyMode::Search => "Search",
+            KeyMode::Command => "Command",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 /* key.rs ends here */
