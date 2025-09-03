@@ -19,17 +19,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use std::sync::Mutex;
-
 use crate::command::Command;
 use crate::key::KeyMode;
 use crate::{args::Args, state::State};
-use spdlog::{debug, error, info};
-use tao::event::DeviceEvent::Key;
+use spdlog::{debug, info};
+use std::sync::Mutex;
 use tao::{
     event::{Event, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    keyboard::KeyCode,
 };
 
 pub struct Application {
@@ -39,7 +36,7 @@ pub struct Application {
 impl Application {
     pub fn start(&mut self) -> anyhow::Result<()> {
         let event_loop = EventLoop::new();
-        let (state, cmd_rx, nav_rx) = State::new(&event_loop, &self.args.url)?;
+        let (state, cmd_rx, nav_rx) = State::new(&self.args, &event_loop, &self.args.url)?;
         let state = Mutex::new(state);
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
@@ -85,7 +82,6 @@ fn dispatch_cmd(state: &Mutex<State>, control_flow: &mut ControlFlow, cmd: Comma
             Command::ModeInsert => state.lock().unwrap().set_key_mode(KeyMode::Insert),
             Command::ModeCommand => state.lock().unwrap().set_key_mode(KeyMode::Command),
             Command::Exit => *control_flow = ControlFlow::Exit,
-            _ => todo!(),
         },
         KeyMode::Insert => {
             if let Command::ModeNormal = cmd {

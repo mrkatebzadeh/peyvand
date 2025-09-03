@@ -22,7 +22,7 @@
 use std::sync::mpsc;
 use wry::http::Request;
 
-use crate::{command::Command, history::History, key::KeyMode};
+use crate::{agent, args::Args, command::Command, history::History, key::KeyMode};
 use spdlog::{debug, error};
 use std::sync::mpsc::Sender;
 use tao::{
@@ -90,6 +90,7 @@ pub struct State {
 
 impl State {
     pub fn new<T, S: AsRef<str>>(
+        args: &Args,
         event_loop: &EventLoop<T>,
         url: S,
     ) -> anyhow::Result<(Self, mpsc::Receiver<Command>, mpsc::Receiver<String>)> {
@@ -103,8 +104,14 @@ impl State {
             .with_title(url.as_ref())
             .build(event_loop)?;
 
+        let agent = match &args.user_agent {
+            Some(agent) => agent.as_str(),
+            None => agent::default_user_agent(),
+        };
+
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
+            .with_user_agent(agent)
             .with_ipc_handler(ipc_handler)
             .with_initialization_script(KEYBINDING_JS)
             .with_navigation_handler(nav_handler);
