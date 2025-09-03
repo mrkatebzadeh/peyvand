@@ -3,6 +3,22 @@ A **Surf-inspired web browser** built with **Vim-style modal key bindings** in m
 
 ---
 
+## ⚡ How to Build
+
+Make sure you have Rust installed (https://rustup.rs).
+
+```bash
+git clone https://github.com/mrkatebzadeh/peyvand.git
+cd peyvand
+cargo build --release
+```
+
+## ▶️ How to Run
+```bash
+cargo run --release
+```
+
+---
 ## 🚀 Features So Far
 
 - ✅ Window and WebView integration
