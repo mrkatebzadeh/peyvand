@@ -21,7 +21,9 @@
 
 mod app;
 mod args;
+mod command;
 mod history;
+mod key;
 mod signal;
 mod state;
 

@@ -19,103 +19,154 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use crate::history::{self, History};
-use dpi::{LogicalPosition, LogicalSize};
+use std::sync::mpsc;
+use wry::http::Request;
+
+use crate::{
+    command::Command,
+    history::{self, History},
+    key::KeyMode,
+};
 use spdlog::debug;
 use tao::{
-    event::WindowEvent,
     event_loop::EventLoop,
     window::{Window, WindowBuilder},
 };
-
 use wry::WebViewBuilder;
 
-#[derive(Default)]
+const SCROLL_STEP: i32 = 40;
+
 pub struct State {
-    window: Option<Window>,
-    webview: Option<wry::WebView>,
+    window: Window,
+    webview: wry::WebView,
     history: History,
+    key_mode: KeyMode,
 }
 
 impl State {
-    pub fn new<T, S: AsRef<str>>(event_loop: &EventLoop<T>, url: S) -> anyhow::Result<Self> {
-        let window = WindowBuilder::new().build(event_loop)?;
+    pub fn new<T, S: AsRef<str>>(
+        event_loop: &EventLoop<T>,
+        url: S,
+    ) -> anyhow::Result<(Self, mpsc::Receiver<Command>)> {
+        let (tx, rx) = mpsc::channel::<Command>();
+        let window = WindowBuilder::new()
+            .with_title(url.as_ref())
+            .build(event_loop)?;
 
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
-            .with_new_window_req_handler(|url, features| {
-                debug!("new window req: {url} {features:?}");
-                wry::NewWindowResponse::Allow
-            });
-
-        #[cfg(feature = "drag-drop")]
-        let builder = builder.with_drag_drop_handler(|e| {
-            match e {
-                wry::DragDropEvent::Enter { paths, position } => {
-                    println!("DragEnter: {position:?} {paths:?} ")
+            .with_ipc_handler(move |req: Request<String>| match req.body().as_ref() {
+                "go-back" => {
+                    tx.send(Command::GoBack).ok();
                 }
-                wry::DragDropEvent::Over { position } => println!("DragOver: {position:?} "),
-                wry::DragDropEvent::Drop { paths, position } => {
-                    println!("DragDrop: {position:?} {paths:?} ")
+                "go-forward" => {
+                    tx.send(Command::GoForward).ok();
                 }
-                wry::DragDropEvent::Leave => println!("DragLeave"),
+                "mode-normal" => {
+                    tx.send(Command::ModeNormal).ok();
+                }
+                "mode-insert" => {
+                    tx.send(Command::ModeInsert).ok();
+                }
+                "scroll-down" => {
+                    tx.send(Command::ScrollDown).ok();
+                }
+                "scroll-up" => {
+                    tx.send(Command::ScrollUp).ok();
+                }
                 _ => {}
+            })
+            .with_initialization_script(
+                r#"
+                window.appState = { mode: 'Normal' };
+            document.addEventListener('keydown', (e) => {
+                e.stopPropagation();
+
+                const mode = window.appState.mode;
+            if (mode === 'Normal') {
+                if (e.key === 'h') {
+                    window.ipc.postMessage('go-back');
+                    e.preventDefault();
+                } else if (e.key === 'l') {
+                    window.ipc.postMessage('go-forward');
+                    e.preventDefault();
+                } else if (e.key === 'j') {
+                    window.ipc.postMessage('scroll-down');
+                    e.preventDefault();
+                } else if (e.key === 'k') {
+                    window.ipc.postMessage('scroll-up');
+                    e.preventDefault();
+                } else if (e.key === 'i') {
+                    window.ipc.postMessage('mode-insert');
+                    e.preventDefault();
+                }
+            } else if (mode === 'Insert') {
+                if (e.key === 'Escape') {
+                    window.ipc.postMessage('mode-normal');
+                    e.preventDefault();
+                }
             }
+            });
+        "#,
+            );
 
-            true
-        });
-
-        #[cfg(any(
-            target_os = "windows",
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "android"
-        ))]
         let webview = builder.build(&window)?;
-        #[cfg(not(any(
-            target_os = "windows",
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "android"
-        )))]
-        let webview = {
-            use tao::platform::unix::WindowExtUnix;
-            use wry::WebViewBuilderExtUnix;
-            let vbox = window.default_vbox().unwrap();
-            builder.build_gtk(vbox)?
-        };
 
         let history = History::new(url.as_ref());
-        Ok(Self {
-            webview: Some(webview),
-            window: Some(window),
-            history,
-        })
+        Ok((
+            Self {
+                webview,
+                window,
+                history,
+                key_mode: KeyMode::Normal,
+            },
+            rx,
+        ))
     }
 }
 
 impl State {
     pub fn set_url<S: AsRef<str>>(&mut self, url: S) {
         self.history.push(url.as_ref());
-        if let Some(webview) = &self.webview {
-            webview.load_url(url.as_ref()).unwrap();
-        }
+        self.webview.load_url(url.as_ref()).unwrap();
     }
 
-    pub fn go_back(&mut self) {
-        if let Some(previous_url) = self.history.back() {
-            if let Some(webview) = &self.webview {
-                webview.load_url(previous_url).unwrap();
-            }
-        }
+    pub fn go_back(&self) {
+        let _ = self.webview.evaluate_script("history.back();");
     }
 
-    pub fn go_forward(&mut self) {
-        if let Some(next_url) = self.history.forward() {
-            if let Some(webview) = &self.webview {
-                webview.load_url(next_url).unwrap();
+    pub fn go_forward(&self) {
+        let _ = self.webview.evaluate_script("history.forward();");
+    }
+
+    pub fn get_key_mode(&self) -> KeyMode {
+        self.key_mode
+    }
+
+    pub fn set_key_mode(&mut self, mode: KeyMode) {
+        self.key_mode = mode;
+
+        let script = format!(
+            "window.appState = {{ mode: '{}' }};",
+            match mode {
+                KeyMode::Normal => "Normal",
+                KeyMode::Insert => "Insert",
+                KeyMode::Search => "Search",
             }
-        }
+        );
+
+        debug!("Mode: {:#?}", mode);
+        let _ = self.webview.evaluate_script(&script);
+    }
+
+    pub fn scroll_down(&self) {
+        let script = format!("window.scrollBy(0, {});", SCROLL_STEP);
+        let _ = self.webview.evaluate_script(&script);
+    }
+
+    pub fn scroll_up(&self) {
+        let script = format!("window.scrollBy(0, -{});", SCROLL_STEP);
+        let _ = self.webview.evaluate_script(&script);
     }
 }
 

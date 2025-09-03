@@ -19,30 +19,78 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+use std::sync::Mutex;
+
+use crate::command::Command;
+use crate::key::KeyMode;
 use crate::{args::Args, state::State};
+use spdlog::{debug, error, info};
+use tao::event::DeviceEvent::Key;
 use tao::{
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, KeyEvent, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
+    keyboard::KeyCode,
 };
 
 pub struct Application {
     args: Args,
-    state: State,
 }
 
 impl Application {
     pub fn start(&mut self) -> anyhow::Result<()> {
         let event_loop = EventLoop::new();
-        let state = State::new(&event_loop, &self.args.url)?;
+        let (state, rx) = State::new(&event_loop, &self.args.url)?;
+        let state = Mutex::new(state);
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
 
-            if let Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } = event
-            {
-                *control_flow = ControlFlow::Exit;
+            while let Ok(cmd) = rx.try_recv() {
+                let mode = state.lock().unwrap().get_key_mode();
+                debug!("Command: {:#?}", cmd);
+                match mode {
+                    KeyMode::Normal => match cmd {
+                        Command::GoBack => state.lock().unwrap().go_back(),
+                        Command::GoForward => state.lock().unwrap().go_forward(),
+
+                        Command::ScrollDown => state.lock().unwrap().scroll_down(),
+                        Command::ScrollUp => state.lock().unwrap().scroll_up(),
+
+                        Command::ModeNormal => state.lock().unwrap().set_key_mode(KeyMode::Normal),
+                        Command::ModeInsert => state.lock().unwrap().set_key_mode(KeyMode::Insert),
+                        Command::Exit => *control_flow = ControlFlow::Exit,
+                        _ => todo!(),
+                    },
+                    KeyMode::Insert => {
+                        if let Command::ModeNormal = cmd {
+                            state.lock().unwrap().set_key_mode(KeyMode::Normal);
+                        }
+                    }
+                    _ => unimplemented!(),
+                }
+            }
+            match event {
+                Event::NewEvents(StartCause::Init) => info!("Webview started"),
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                } => {
+                    info!("Peyvand exiting");
+                    *control_flow = ControlFlow::Exit
+                }
+                Event::DeviceEvent {
+                    device_id,
+                    event: Key(raw_key),
+                    ..
+                } => {
+                    info!("A key is pressed: {:#?}", raw_key);
+                    match raw_key.physical_key {
+                        KeyCode::KeyH => {
+                            info!("h is pressed");
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
             }
         });
     }
@@ -50,10 +98,7 @@ impl Application {
 
 impl Application {
     pub fn new(args: Args) -> Self {
-        Self {
-            args,
-            state: State::default(),
-        }
+        Self { args }
     }
 }
 
