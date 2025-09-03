@@ -40,93 +40,41 @@ pub struct Args {
     #[arg(short = 'C')]
     pub stylefile: Option<String>,
 
-    /// Disk cache off
-    #[arg(short = 'd', conflicts_with = "diskcache_on")]
-    pub diskcache_off: bool,
-
-    /// Disk cache on
-    #[arg(short = 'D', conflicts_with = "diskcache_off")]
-    pub diskcache_on: bool,
+    /// Disk cache
+    #[arg(short = 'd')]
+    pub diskcache: bool,
 
     /// Embed window id
     #[arg(short = 'e')]
     pub embed: Option<u32>,
 
-    /// Run in fullscreen off
-    #[arg(short = 'f', conflicts_with = "fullscreen_on")]
-    pub fullscreen_off: bool,
+    /// Run in fullscreen
+    #[arg(short = 'f')]
+    pub fullscreen: bool,
 
-    /// Run in fullscreen on
-    #[arg(short = 'F', conflicts_with = "fullscreen_off")]
-    pub fullscreen_on: bool,
+    /// Geolocation
+    #[arg(short = 'g')]
+    pub geolocation: bool,
 
-    /// Geolocation off
-    #[arg(short = 'g', conflicts_with = "geolocation_on")]
-    pub geolocation_off: bool,
-
-    /// Geolocation on
-    #[arg(short = 'G', conflicts_with = "geolocation_off")]
-    pub geolocation_on: bool,
-
-    /// Load images off
-    #[arg(short = 'i', conflicts_with = "loadimages_on")]
-    pub loadimages_off: bool,
-
-    /// Load images on
-    #[arg(short = 'I', conflicts_with = "loadimages_off")]
-    pub loadimages_on: bool,
-
-    /// Kiosk mode off
-    #[arg(short = 'k', conflicts_with = "kiosk_on")]
-    pub kiosk_off: bool,
-
-    /// Kiosk mode on
-    #[arg(short = 'K', conflicts_with = "kiosk_off")]
-    pub kiosk_on: bool,
-
-    /// Style light
-    #[arg(short = 'm', conflicts_with = "style_dark")]
-    pub style_light: bool,
+    /// Load images
+    #[arg(short = 'i')]
+    pub loadimages: bool,
 
     /// Style dark
-    #[arg(short = 'M', conflicts_with = "style_light")]
-    pub style_dark: bool,
+    #[arg(short = 'm')]
+    pub dark_mode: bool,
 
-    /// Inspector off
-    #[arg(short = 'n', conflicts_with = "inspector_on")]
-    pub inspector_off: bool,
+    /// Inspector
+    #[arg(short = 'n')]
+    pub inspector: bool,
 
-    /// Inspector on
-    #[arg(short = 'N', conflicts_with = "inspector_off")]
-    pub inspector_on: bool,
+    /// JavaScript
+    #[arg(short = 's')]
+    pub javascript: bool,
 
-    /// Plugins off
-    #[arg(short = 'p', conflicts_with = "plugins_on")]
-    pub plugins_off: bool,
-
-    /// Plugins on
-    #[arg(short = 'P', conflicts_with = "plugins_off")]
-    pub plugins_on: bool,
-
-    /// Script file
-    #[arg(short = 'r')]
-    pub scriptfile: Option<String>,
-
-    /// JavaScript off
-    #[arg(short = 's', conflicts_with = "javascript_on")]
-    pub javascript_off: bool,
-
-    /// JavaScript on
-    #[arg(short = 'S', conflicts_with = "javascript_off")]
-    pub javascript_on: bool,
-
-    /// Strict TLS off
-    #[arg(short = 't', conflicts_with = "stricttls_on")]
-    pub stricttls_off: bool,
-
-    /// Strict TLS on
-    #[arg(short = 'T', conflicts_with = "stricttls_off")]
-    pub stricttls_on: bool,
+    /// Strict TLS
+    #[arg(short = 't')]
+    pub stricttls: bool,
 
     /// User agent string
     #[arg(short = 'u')]
@@ -135,22 +83,6 @@ pub struct Args {
     #[arg(short, long, action = clap::ArgAction::Count)]
     #[arg(help = "Increment verbosity level (repeat for more detail, e.g., -vvv)")]
     pub verbose: u8,
-
-    /// Show XID
-    #[arg(short = 'w')]
-    pub show_xid: bool,
-
-    /// Certificate off
-    #[arg(short = 'x', conflicts_with = "certificate_on")]
-    pub certificate_off: bool,
-
-    /// Certificate on
-    #[arg(short = 'X', conflicts_with = "certificate_off")]
-    pub certificate_on: bool,
-
-    /// Zoom level
-    #[arg(short = 'z')]
-    pub zoom: Option<f32>,
 
     /// Positional URL
     #[arg(default_value = "about:blank")]
