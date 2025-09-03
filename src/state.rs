@@ -22,7 +22,9 @@
 use std::sync::mpsc;
 use wry::http::Request;
 
-use crate::{agent, args::Args, command::Command, history::History, key::KeyMode};
+use crate::{
+    agent, args::Args, command::Command, cookie::CookieManager, history::History, key::KeyMode,
+};
 use spdlog::{debug, error};
 use std::sync::mpsc::Sender;
 use tao::{
@@ -86,6 +88,7 @@ pub struct State {
     pub webview: wry::WebView,
     pub history: History,
     pub key_mode: KeyMode,
+    pub cookie_mgr: CookieManager,
 }
 
 impl State {
@@ -118,6 +121,9 @@ impl State {
 
         let webview = builder.build(&window)?;
 
+        let cookie_mgr = CookieManager::new(args.cookiefile.clone(), args.cookie_policies.clone());
+        cookie_mgr.load_cookies(&webview)?;
+
         let history = History::new(url.as_ref());
         Ok((
             Self {
@@ -125,6 +131,7 @@ impl State {
                 window,
                 history,
                 key_mode: KeyMode::Normal,
+                cookie_mgr,
             },
             cmd_rx,
             nav_rx,
@@ -179,6 +186,10 @@ impl State {
     pub fn scroll_up(&self) {
         let script = format!("window.scrollBy(0, -{});", SCROLL_STEP);
         let _ = self.webview.evaluate_script(&script);
+    }
+
+    pub fn exit(&self) {
+        self.cookie_mgr.save_cookies(&self.webview);
     }
 }
 

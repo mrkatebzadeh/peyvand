@@ -25,16 +25,12 @@ use clap::Parser;
 #[command(version, about, long_about = None, term_width = 80)]
 pub struct Args {
     /// Cookie policies
-    #[arg(short = 'a')]
+    #[arg(short = 'a', default_value = "all")]
     pub cookie_policies: Option<String>,
 
-    /// Scrollbars off
-    #[arg(short = 'b', conflicts_with = "scrollbars_on")]
-    pub scrollbars_off: bool,
-
-    /// Scrollbars on
-    #[arg(short = 'B', conflicts_with = "scrollbars_off")]
-    pub scrollbars_on: bool,
+    /// Scrollbars
+    #[arg(short = 'b')]
+    pub scrollbars: bool,
 
     /// Cookie file path
     #[arg(short = 'c')]

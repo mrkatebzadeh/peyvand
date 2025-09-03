@@ -23,6 +23,7 @@ mod agent;
 mod app;
 mod args;
 mod command;
+mod cookie;
 mod history;
 mod key;
 mod signal;

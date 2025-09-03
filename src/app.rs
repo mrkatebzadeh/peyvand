@@ -81,7 +81,10 @@ fn dispatch_cmd(state: &Mutex<State>, control_flow: &mut ControlFlow, cmd: Comma
             Command::ModeNormal => state.lock().unwrap().set_key_mode(KeyMode::Normal),
             Command::ModeInsert => state.lock().unwrap().set_key_mode(KeyMode::Insert),
             Command::ModeCommand => state.lock().unwrap().set_key_mode(KeyMode::Command),
-            Command::Exit => *control_flow = ControlFlow::Exit,
+            Command::Exit => {
+                state.lock().unwrap().exit();
+                *control_flow = ControlFlow::Exit;
+            }
         },
         KeyMode::Insert => {
             if let Command::ModeNormal = cmd {
