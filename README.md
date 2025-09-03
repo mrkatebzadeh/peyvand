@@ -33,6 +33,10 @@ cargo run --release
 
 - ⬜ Native status bar for mode & command display
 - ⬜ Customizable keybindings
+- ⬜ URL manipulation (change, copy, paste, reload)
+- ⬜ Search text within page
+- ⬜ Follow links with hints (like Vimium-style navigation)
+- ⬜ Configurable homepage
 
 ---
 
