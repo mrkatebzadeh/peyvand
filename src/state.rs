@@ -22,12 +22,9 @@
 use std::sync::mpsc;
 use wry::http::Request;
 
-use crate::{
-    command::Command,
-    history::{self, History},
-    key::KeyMode,
-};
+use crate::{command::Command, history::History, key::KeyMode};
 use spdlog::debug;
+use std::sync::mpsc::Sender;
 use tao::{
     event_loop::EventLoop,
     window::{Window, WindowBuilder},
@@ -35,49 +32,7 @@ use tao::{
 use wry::WebViewBuilder;
 
 const SCROLL_STEP: i32 = 40;
-
-pub struct State {
-    window: Window,
-    webview: wry::WebView,
-    history: History,
-    key_mode: KeyMode,
-}
-
-impl State {
-    pub fn new<T, S: AsRef<str>>(
-        event_loop: &EventLoop<T>,
-        url: S,
-    ) -> anyhow::Result<(Self, mpsc::Receiver<Command>)> {
-        let (tx, rx) = mpsc::channel::<Command>();
-        let window = WindowBuilder::new()
-            .with_title(url.as_ref())
-            .build(event_loop)?;
-
-        let builder = WebViewBuilder::new()
-            .with_url(url.as_ref())
-            .with_ipc_handler(move |req: Request<String>| match req.body().as_ref() {
-                "go-back" => {
-                    tx.send(Command::GoBack).ok();
-                }
-                "go-forward" => {
-                    tx.send(Command::GoForward).ok();
-                }
-                "mode-normal" => {
-                    tx.send(Command::ModeNormal).ok();
-                }
-                "mode-insert" => {
-                    tx.send(Command::ModeInsert).ok();
-                }
-                "scroll-down" => {
-                    tx.send(Command::ScrollDown).ok();
-                }
-                "scroll-up" => {
-                    tx.send(Command::ScrollUp).ok();
-                }
-                _ => {}
-            })
-            .with_initialization_script(
-                r#"
+const KEYBINDING_JS: &str = r#"
                 window.appState = { mode: 'Normal' };
             document.addEventListener('keydown', (e) => {
                 e.stopPropagation();
@@ -107,8 +62,56 @@ impl State {
                 }
             }
             });
-        "#,
-            );
+        "#;
+
+fn make_ipc_handler(tx: Sender<Command>) -> impl Fn(Request<String>) + 'static {
+    move |req: Request<String>| match req.body().as_ref() {
+        "go-back" => {
+            tx.send(Command::GoBack).ok();
+        }
+        "go-forward" => {
+            tx.send(Command::GoForward).ok();
+        }
+        "mode-normal" => {
+            tx.send(Command::ModeNormal).ok();
+        }
+        "mode-insert" => {
+            tx.send(Command::ModeInsert).ok();
+        }
+        "scroll-down" => {
+            tx.send(Command::ScrollDown).ok();
+        }
+        "scroll-up" => {
+            tx.send(Command::ScrollUp).ok();
+        }
+        _ => {}
+    }
+}
+
+pub struct State {
+    window: Window,
+    webview: wry::WebView,
+    history: History,
+    key_mode: KeyMode,
+}
+
+impl State {
+    pub fn new<T, S: AsRef<str>>(
+        event_loop: &EventLoop<T>,
+        url: S,
+    ) -> anyhow::Result<(Self, mpsc::Receiver<Command>)> {
+        let (tx, rx) = mpsc::channel::<Command>();
+
+        let ipc_handler = make_ipc_handler(tx.clone());
+
+        let window = WindowBuilder::new()
+            .with_title(url.as_ref())
+            .build(event_loop)?;
+
+        let builder = WebViewBuilder::new()
+            .with_url(url.as_ref())
+            .with_ipc_handler(ipc_handler)
+            .with_initialization_script(KEYBINDING_JS);
 
         let webview = builder.build(&window)?;
 
