@@ -22,6 +22,8 @@ cargo run --release
 ## 🚀 Features So Far
 
 - ✅ Window and WebView integration
+- ✅ Cookie Manager
+- ✅ User Agent
 - ✅ Basic Vim navigation keys: `h`, `j`, `k`, `l`
 - ✅ History stack for back/forward navigation
 
