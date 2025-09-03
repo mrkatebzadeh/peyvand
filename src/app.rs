@@ -78,21 +78,29 @@ fn dispatch_cmd(state: &Mutex<State>, control_flow: &mut ControlFlow, cmd: Comma
             Command::ScrollDown => state.lock().unwrap().scroll_down(),
             Command::ScrollUp => state.lock().unwrap().scroll_up(),
 
-            Command::ModeNormal => state.lock().unwrap().set_key_mode(KeyMode::Normal),
-            Command::ModeInsert => state.lock().unwrap().set_key_mode(KeyMode::Insert),
-            Command::ModeCommand => state.lock().unwrap().set_key_mode(KeyMode::Command),
+            Command::ScrollHalfDown => state.lock().unwrap().scroll_half_down(),
+            Command::ScrollHalfUp => state.lock().unwrap().scroll_half_up(),
+
+            Command::ScrollTop => state.lock().unwrap().scroll_top(),
+            Command::ScrollBottom => state.lock().unwrap().scroll_bottom(),
+
+            Command::NormalMode => state.lock().unwrap().set_key_mode(KeyMode::Normal),
+            Command::InsertMode => state.lock().unwrap().set_key_mode(KeyMode::Insert),
+
+            Command::CmdMode => state.lock().unwrap().set_key_mode(KeyMode::Command),
+
             Command::Exit => {
                 state.lock().unwrap().exit();
                 *control_flow = ControlFlow::Exit;
             }
         },
         KeyMode::Insert => {
-            if let Command::ModeNormal = cmd {
+            if let Command::NormalMode = cmd {
                 state.lock().unwrap().set_key_mode(KeyMode::Normal);
             }
         }
         KeyMode::Command => {
-            if let Command::ModeNormal = cmd {
+            if let Command::NormalMode = cmd {
                 state.lock().unwrap().set_key_mode(KeyMode::Normal);
             }
         }

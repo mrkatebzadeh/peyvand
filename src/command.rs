@@ -25,10 +25,14 @@ pub enum Command {
     GoForward,
     ScrollDown,
     ScrollUp,
+    ScrollTop,
+    ScrollBottom,
+    ScrollHalfUp,
+    ScrollHalfDown,
     Exit,
     #[default]
-    ModeNormal,
-    ModeInsert,
-    ModeCommand,
+    NormalMode,
+    InsertMode,
+    CmdMode,
 }
 /* command.rs ends here */

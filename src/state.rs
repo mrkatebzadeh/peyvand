@@ -39,7 +39,7 @@ const KEYBINDING_JS: &str = include_str!("./keybindings.js");
 fn make_ipc_handler(tx: Sender<Command>) -> impl Fn(Request<String>) + 'static {
     move |req: Request<String>| {
         if let Some(cmd) = req.body().strip_prefix("command:") {
-            tx.send(Command::ModeNormal).ok();
+            tx.send(Command::NormalMode).ok();
             match cmd {
                 "q" => {
                     tx.send(Command::Exit).ok();
@@ -57,19 +57,31 @@ fn make_ipc_handler(tx: Sender<Command>) -> impl Fn(Request<String>) + 'static {
                 tx.send(Command::GoForward).ok();
             }
             "mode-normal" => {
-                tx.send(Command::ModeNormal).ok();
+                tx.send(Command::NormalMode).ok();
             }
             "mode-insert" => {
-                tx.send(Command::ModeInsert).ok();
+                tx.send(Command::InsertMode).ok();
             }
             "mode-command" => {
-                tx.send(Command::ModeCommand).ok();
+                tx.send(Command::CmdMode).ok();
             }
             "scroll-down" => {
                 tx.send(Command::ScrollDown).ok();
             }
             "scroll-up" => {
                 tx.send(Command::ScrollUp).ok();
+            }
+            "scroll-top" => {
+                tx.send(Command::ScrollTop).ok();
+            }
+            "scroll-bottom" => {
+                tx.send(Command::ScrollBottom).ok();
+            }
+            "scroll-half-down" => {
+                tx.send(Command::ScrollHalfDown).ok();
+            }
+            "scroll-half-up" => {
+                tx.send(Command::ScrollHalfUp).ok();
             }
             _ => {}
         }
@@ -188,8 +200,28 @@ impl State {
         let _ = self.webview.evaluate_script(&script);
     }
 
+    pub fn scroll_top(&self) {
+        let _ = self.webview.evaluate_script("window.scrollTo(0, 0);");
+    }
+
+    pub fn scroll_bottom(&self) {
+        let _ = self
+            .webview
+            .evaluate_script("window.scrollTo(0, document.body.scrollHeight);");
+    }
+
+    pub fn scroll_half_down(&self) {
+        let script = format!("window.scrollBy(0, {});", SCROLL_STEP * 3);
+        let _ = self.webview.evaluate_script(&script);
+    }
+
+    pub fn scroll_half_up(&self) {
+        let script = format!("window.scrollBy(0, -{});", SCROLL_STEP * 3);
+        let _ = self.webview.evaluate_script(&script);
+    }
+
     pub fn exit(&self) {
-        self.cookie_mgr.save_cookies(&self.webview);
+        let _ = self.cookie_mgr.save_cookies(&self.webview);
     }
 }
 
