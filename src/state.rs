@@ -88,6 +88,13 @@ fn make_ipc_handler(tx: Sender<Command>) -> impl Fn(Request<String>) + 'static {
     }
 }
 
+fn make_navigation_handler(nav_tx: Sender<String>) -> impl Fn(String) -> bool + 'static {
+    move |url: String| {
+        nav_tx.send(url.to_string()).ok();
+        true
+    }
+}
+
 pub struct State {
     window: Window,
     webview: wry::WebView,
@@ -99,10 +106,12 @@ impl State {
     pub fn new<T, S: AsRef<str>>(
         event_loop: &EventLoop<T>,
         url: S,
-    ) -> anyhow::Result<(Self, mpsc::Receiver<Command>)> {
-        let (tx, rx) = mpsc::channel::<Command>();
+    ) -> anyhow::Result<(Self, mpsc::Receiver<Command>, mpsc::Receiver<String>)> {
+        let (cmd_tx, cmd_rx) = mpsc::channel::<Command>();
+        let ipc_handler = make_ipc_handler(cmd_tx.clone());
 
-        let ipc_handler = make_ipc_handler(tx.clone());
+        let (nav_tx, nav_rx) = mpsc::channel::<String>();
+        let nav_handler = make_navigation_handler(nav_tx.clone());
 
         let window = WindowBuilder::new()
             .with_title(url.as_ref())
@@ -111,7 +120,8 @@ impl State {
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
             .with_ipc_handler(ipc_handler)
-            .with_initialization_script(KEYBINDING_JS);
+            .with_initialization_script(KEYBINDING_JS)
+            .with_navigation_handler(nav_handler);
 
         let webview = builder.build(&window)?;
 
@@ -123,7 +133,8 @@ impl State {
                 history,
                 key_mode: KeyMode::Normal,
             },
-            rx,
+            cmd_rx,
+            nav_rx,
         ))
     }
 }
@@ -131,14 +142,18 @@ impl State {
 impl State {
     pub fn set_url<S: AsRef<str>>(&mut self, url: S) {
         self.history.push(url.as_ref());
-        self.webview.load_url(url.as_ref()).unwrap();
+        self.window.set_title(self.history.current());
     }
 
-    pub fn go_back(&self) {
+    pub fn go_back(&mut self) {
+        self.history.back();
+        self.window.set_title(self.history.current());
         let _ = self.webview.evaluate_script("history.back();");
     }
 
-    pub fn go_forward(&self) {
+    pub fn go_forward(&mut self) {
+        self.history.forward();
+        self.window.set_title(self.history.current());
         let _ = self.webview.evaluate_script("history.forward();");
     }
 

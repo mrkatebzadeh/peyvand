@@ -24,10 +24,10 @@ use std::sync::Mutex;
 use crate::command::Command;
 use crate::key::KeyMode;
 use crate::{args::Args, state::State};
-use spdlog::{debug, error, info};
+use spdlog::{debug, info};
 use tao::event::DeviceEvent::Key;
 use tao::{
-    event::{ElementState, Event, KeyEvent, StartCause, WindowEvent},
+    event::{Event, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     keyboard::KeyCode,
 };
@@ -39,12 +39,15 @@ pub struct Application {
 impl Application {
     pub fn start(&mut self) -> anyhow::Result<()> {
         let event_loop = EventLoop::new();
-        let (state, rx) = State::new(&event_loop, &self.args.url)?;
+        let (state, cmd_rx, nav_rx) = State::new(&event_loop, &self.args.url)?;
         let state = Mutex::new(state);
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
 
-            while let Ok(cmd) = rx.try_recv() {
+            while let Ok(url) = nav_rx.try_recv() {
+                state.lock().unwrap().set_url(url);
+            }
+            while let Ok(cmd) = cmd_rx.try_recv() {
                 let mode = state.lock().unwrap().get_key_mode();
                 debug!("Command: {:#?}", cmd);
                 match mode {
