@@ -12,5 +12,4 @@ signal-hook = {version = "0.3.*", features = ["extended-siginfo"] }
 libc = "0.2.*"
 tao = "0.34.*"
 wry = "0.53.*"
-wgpu = "26.0.*"
 toml = "0.9.*"
