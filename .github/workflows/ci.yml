@@ -1,0 +1,56 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    env:
+      RUST_BACKTRACE: full
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        profile: minimal
+
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo build
+      uses: actions/cache@v3
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install Xvfb (for headless GUI tests)
+      run: sudo apt-get update && sudo apt-get install -y xvfb
+
+    - name: Build
+      run: cargo build --workspace --verbose
+
+    - name: Run Unit Tests (headless)
+      run: xvfb-run -a cargo test --workspace --verbose
+
+    - name: Run Clippy
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
+    - name: Run cargo audit
+      uses: actions-rs/audit-check@v1
