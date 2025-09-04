@@ -28,7 +28,7 @@ use crate::{
     args::Args,
     cookie::CookieManager,
     history::History,
-    key::{KeyMode, KeybindingConfig, KeybindingManager},
+    key::{KeyMode, KeybindingManager},
     statusbar::Statusbar,
 };
 use spdlog::{debug, error};
