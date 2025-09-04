@@ -21,7 +21,7 @@
 
 use spdlog::error;
 use std::path::PathBuf;
-use wry::{WebView, cookie::Cookie};
+use wry::{cookie::Cookie, WebView};
 
 pub struct CookieManager {
     file: Option<PathBuf>,
