@@ -132,7 +132,7 @@ impl State {
         let manager = KeybindingManager::new(None).unwrap();
 
         let keybinding_js = manager.export_full_js();
-        std::fs::write("keybindings.js", &keybinding_js).unwrap();
+        // std::fs::write("keybindings.js", &keybinding_js).unwrap();
 
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
