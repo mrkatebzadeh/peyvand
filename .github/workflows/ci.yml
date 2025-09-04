@@ -16,6 +16,19 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libgtk-3-dev \
+          libwebkit2gtk-4.0-dev \
+          libglib2.0-dev \
+          libgtk-3-0 \
+          pkg-config \
+          build-essential \
+          xvfb
+
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
