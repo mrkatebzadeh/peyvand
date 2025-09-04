@@ -19,10 +19,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+mod action;
 mod agent;
 mod app;
 mod args;
-mod command;
 mod cookie;
 mod history;
 mod key;
@@ -31,7 +31,7 @@ mod state;
 
 use app::Application;
 use signal::setup_signal_handlers;
-use spdlog::{Level, LevelFilter, Logger, debug, info};
+use spdlog::{debug, info, Level, LevelFilter, Logger};
 use std::sync::Arc;
 
 fn main() -> anyhow::Result<()> {

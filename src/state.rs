@@ -23,9 +23,9 @@ use std::sync::mpsc;
 use wry::http::Request;
 
 use crate::{
+    action::Action,
     agent,
     args::Args,
-    command::Command,
     cookie::CookieManager,
     history::History,
     key::{KeyMode, KeybindingConfig, KeybindingManager},
@@ -40,13 +40,13 @@ use wry::WebViewBuilder;
 
 const SCROLL_STEP: i32 = 40;
 
-fn make_ipc_handler(tx: Sender<Command>) -> impl Fn(Request<String>) + 'static {
+fn make_ipc_handler(tx: Sender<Action>) -> impl Fn(Request<String>) + 'static {
     move |req: Request<String>| {
         if let Some(cmd) = req.body().strip_prefix("command:") {
-            tx.send(Command::NormalMode).ok();
+            tx.send(Action::NormalMode).ok();
             match cmd {
                 "q" => {
-                    tx.send(Command::Exit).ok();
+                    tx.send(Action::Exit).ok();
                 }
                 _ => {
                     error!("Unknown command: {}", cmd);
@@ -55,37 +55,37 @@ fn make_ipc_handler(tx: Sender<Command>) -> impl Fn(Request<String>) + 'static {
         }
         match req.body().as_ref() {
             "go-back" => {
-                tx.send(Command::GoBack).ok();
+                tx.send(Action::GoBack).ok();
             }
             "go-forward" => {
-                tx.send(Command::GoForward).ok();
+                tx.send(Action::GoForward).ok();
             }
             "mode-normal" => {
-                tx.send(Command::NormalMode).ok();
+                tx.send(Action::NormalMode).ok();
             }
             "mode-insert" => {
-                tx.send(Command::InsertMode).ok();
+                tx.send(Action::InsertMode).ok();
             }
-            "mode-command" => {
-                tx.send(Command::CmdMode).ok();
+            "mode-cmd" => {
+                tx.send(Action::CmdMode).ok();
             }
             "scroll-down" => {
-                tx.send(Command::ScrollDown).ok();
+                tx.send(Action::ScrollDown).ok();
             }
             "scroll-up" => {
-                tx.send(Command::ScrollUp).ok();
+                tx.send(Action::ScrollUp).ok();
             }
             "scroll-top" => {
-                tx.send(Command::ScrollTop).ok();
+                tx.send(Action::ScrollTop).ok();
             }
             "scroll-bottom" => {
-                tx.send(Command::ScrollBottom).ok();
+                tx.send(Action::ScrollBottom).ok();
             }
             "scroll-half-down" => {
-                tx.send(Command::ScrollHalfDown).ok();
+                tx.send(Action::ScrollHalfDown).ok();
             }
             "scroll-half-up" => {
-                tx.send(Command::ScrollHalfUp).ok();
+                tx.send(Action::ScrollHalfUp).ok();
             }
             _ => {}
         }
@@ -112,8 +112,8 @@ impl State {
         args: &Args,
         event_loop: &EventLoop<T>,
         url: S,
-    ) -> anyhow::Result<(Self, mpsc::Receiver<Command>, mpsc::Receiver<String>)> {
-        let (cmd_tx, cmd_rx) = mpsc::channel::<Command>();
+    ) -> anyhow::Result<(Self, mpsc::Receiver<Action>, mpsc::Receiver<String>)> {
+        let (cmd_tx, cmd_rx) = mpsc::channel::<Action>();
         let ipc_handler = make_ipc_handler(cmd_tx.clone());
 
         let (nav_tx, nav_rx) = mpsc::channel::<String>();
@@ -140,6 +140,7 @@ impl State {
         let manager = KeybindingManager::new(Some(&config)).unwrap();
 
         let keybinding_js = manager.export_full_js();
+        std::fs::write("keybindings.js", &keybinding_js).unwrap();
 
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
@@ -199,7 +200,7 @@ impl State {
                 KeyMode::Normal => "Normal",
                 KeyMode::Insert => "Insert",
                 KeyMode::Search => "Search",
-                KeyMode::Command => "Command",
+                KeyMode::Cmd => "Cmd",
             }
         );
 

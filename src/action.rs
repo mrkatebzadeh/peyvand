@@ -20,7 +20,7 @@
 */
 
 #[derive(Default, Clone, Copy, Debug)]
-pub enum Command {
+pub enum Action {
     GoBack,
     GoForward,
     ScrollDown,

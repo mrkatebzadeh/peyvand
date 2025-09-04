@@ -19,7 +19,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use crate::command::Command;
+use crate::action::Action;
 use crate::key::KeyMode;
 use crate::{args::Args, state::State};
 use spdlog::{debug, info};
@@ -36,7 +36,7 @@ pub struct Application {
 impl Application {
     pub fn start(&mut self) -> anyhow::Result<()> {
         let event_loop = EventLoop::new();
-        let (state, cmd_rx, nav_rx) = State::new(&self.args, &event_loop, &self.args.url)?;
+        let (state, act_rx, nav_rx) = State::new(&self.args, &event_loop, &self.args.url)?;
         let state = Mutex::new(state);
         event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
@@ -44,8 +44,8 @@ impl Application {
             while let Ok(url) = nav_rx.try_recv() {
                 state.lock().unwrap().set_url(url);
             }
-            while let Ok(cmd) = cmd_rx.try_recv() {
-                dispatch_cmd(&state, control_flow, cmd);
+            while let Ok(act) = act_rx.try_recv() {
+                dispatch_act(&state, control_flow, act);
             }
             handle_event(event, control_flow);
         });
@@ -66,41 +66,41 @@ fn handle_event(event: Event<'_, ()>, control_flow: &mut ControlFlow) {
     }
 }
 
-fn dispatch_cmd(state: &Mutex<State>, control_flow: &mut ControlFlow, cmd: Command) {
+fn dispatch_act(state: &Mutex<State>, control_flow: &mut ControlFlow, cmd: Action) {
     let mode = state.lock().unwrap().get_key_mode();
-    debug!("Command: {:#?}", cmd);
+    debug!("Action: {:#?}", cmd);
 
     match mode {
         KeyMode::Normal => match cmd {
-            Command::GoBack => state.lock().unwrap().go_back(),
-            Command::GoForward => state.lock().unwrap().go_forward(),
+            Action::GoBack => state.lock().unwrap().go_back(),
+            Action::GoForward => state.lock().unwrap().go_forward(),
 
-            Command::ScrollDown => state.lock().unwrap().scroll_down(),
-            Command::ScrollUp => state.lock().unwrap().scroll_up(),
+            Action::ScrollDown => state.lock().unwrap().scroll_down(),
+            Action::ScrollUp => state.lock().unwrap().scroll_up(),
 
-            Command::ScrollHalfDown => state.lock().unwrap().scroll_half_down(),
-            Command::ScrollHalfUp => state.lock().unwrap().scroll_half_up(),
+            Action::ScrollHalfDown => state.lock().unwrap().scroll_half_down(),
+            Action::ScrollHalfUp => state.lock().unwrap().scroll_half_up(),
 
-            Command::ScrollTop => state.lock().unwrap().scroll_top(),
-            Command::ScrollBottom => state.lock().unwrap().scroll_bottom(),
+            Action::ScrollTop => state.lock().unwrap().scroll_top(),
+            Action::ScrollBottom => state.lock().unwrap().scroll_bottom(),
 
-            Command::NormalMode => state.lock().unwrap().set_key_mode(KeyMode::Normal),
-            Command::InsertMode => state.lock().unwrap().set_key_mode(KeyMode::Insert),
+            Action::NormalMode => state.lock().unwrap().set_key_mode(KeyMode::Normal),
+            Action::InsertMode => state.lock().unwrap().set_key_mode(KeyMode::Insert),
 
-            Command::CmdMode => state.lock().unwrap().set_key_mode(KeyMode::Command),
+            Action::CmdMode => state.lock().unwrap().set_key_mode(KeyMode::Cmd),
 
-            Command::Exit => {
+            Action::Exit => {
                 state.lock().unwrap().exit();
                 *control_flow = ControlFlow::Exit;
             }
         },
         KeyMode::Insert => {
-            if let Command::NormalMode = cmd {
+            if let Action::NormalMode = cmd {
                 state.lock().unwrap().set_key_mode(KeyMode::Normal);
             }
         }
-        KeyMode::Command => {
-            if let Command::NormalMode = cmd {
+        KeyMode::Cmd => {
+            if let Action::NormalMode = cmd {
                 state.lock().unwrap().set_key_mode(KeyMode::Normal);
             }
         }

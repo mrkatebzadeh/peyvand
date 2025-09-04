@@ -29,7 +29,7 @@ pub enum KeyMode {
     Normal,
     Insert,
     Search,
-    Command,
+    Cmd,
 }
 
 impl Display for KeyMode {
@@ -38,7 +38,7 @@ impl Display for KeyMode {
             KeyMode::Normal => "Normal",
             KeyMode::Insert => "Insert",
             KeyMode::Search => "Search",
-            KeyMode::Command => "Command",
+            KeyMode::Cmd => "Cmd",
         };
         write!(f, "{}", s)
     }
@@ -85,7 +85,7 @@ impl KeybindingManager {
         normal.insert("go-back".to_string(), KeySequence::from_str("h"));
         normal.insert("go-forward".to_string(), KeySequence::from_str("l"));
         normal.insert("mode-insert".to_string(), KeySequence::from_str("i"));
-        normal.insert("mode-command".to_string(), KeySequence::from_str(":"));
+        normal.insert("mode-cmd".to_string(), KeySequence::from_str(":"));
 
         bindings.insert(KeyMode::Normal, normal);
 
@@ -100,7 +100,7 @@ impl KeybindingManager {
                     "normal" => KeyMode::Normal,
                     "insert" => KeyMode::Insert,
                     "search" => KeyMode::Search,
-                    "command" => KeyMode::Command,
+                    "cmd" => KeyMode::Cmd,
                     _ => return Err(format!("Unknown mode: {}", mode_str)),
                 };
 
@@ -141,7 +141,7 @@ impl KeybindingManager {
 
         js.push_str(
             r#"
-const sendCommand = (cmd) => window.ipc.postMessage(cmd);
+const sendAction = (cmd) => window.ipc.postMessage(cmd);
 "#,
         );
 
@@ -197,7 +197,7 @@ class KeyTrie {
                 KeyMode::Normal => "Normal",
                 KeyMode::Insert => "Insert",
                 KeyMode::Search => "Search",
-                KeyMode::Command => "Command",
+                KeyMode::Cmd => "Cmd",
             };
             js.push_str(&format!(
                 "window.keyTries['{}'] = new KeyTrie();\n",
@@ -221,7 +221,7 @@ document.addEventListener("keydown", (e) => {
 
   if (e.key === "Escape" && window.appState.mode !== "Normal") {
     window.appState.mode = "Normal";
-    sendCommand("mode-normal");
+    sendAction("mode-normal");
     if (window.keyTries[window.appState.mode])
       window.keyTries[window.appState.mode].reset();
     e.preventDefault();
@@ -234,12 +234,12 @@ document.addEventListener("keydown", (e) => {
   const trie = window.keyTries[window.appState.mode];
   if (!trie) return;
 
-  if (window.appState.mode === "Command") {
+  if (window.appState.mode === "Cmd") {
     if (e.key === "Enter") {
-      sendCommand("command:" + window.appState.commandBuffer);
+      sendAction("command:" + window.appState.commandBuffer);
       window.appState.commandBuffer = "";
       window.appState.mode = "Normal";
-      sendCommand("mode-normal");
+      sendAction("mode-normal");
       trie.reset();
       e.preventDefault();
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
@@ -251,11 +251,11 @@ document.addEventListener("keydown", (e) => {
 
   const cmd = trie.processKey(key);
   if (cmd) {
-    sendCommand(cmd);
+    sendAction(cmd);
     e.preventDefault();
     if (cmd.startsWith("mode-")) {
       window.appState.mode = cmd.split("-")[1][0].toUpperCase() + cmd.split("-")[1].slice(1);
-      if (window.appState.mode === "Command") window.appState.commandBuffer = "";
+      if (window.appState.mode === "Cmd") window.appState.commandBuffer = "";
     }
   } else if (cmd === null) {
     trie.reset(); // invalid sequence
