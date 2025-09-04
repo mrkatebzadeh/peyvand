@@ -26,13 +26,13 @@ cargo run --release
 - ✅ User Agent
 - ✅ Basic Vim navigation keys: `h`, `j`, `k`, `l`
 - ✅ History stack for back/forward navigation
+- ✅ Customizable keybindings
 
 ---
 
 ## 🎯 Upcoming
 
 - ⬜ Native status bar for mode & command display
-- ⬜ Customizable keybindings
 - ⬜ URL manipulation (change, copy, paste, reload)
 - ⬜ Search text within page
 - ⬜ Follow links with hints (like Vimium-style navigation)
