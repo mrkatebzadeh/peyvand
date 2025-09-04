@@ -44,7 +44,6 @@ fn handle_sigchld() {
 }
 
 fn handle_sighup() {
-    // Implement the logic to handle SIGHUP
     println!("Received SIGHUP");
 }
 
