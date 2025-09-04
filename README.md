@@ -1,5 +1,6 @@
 # Peyvand 🕸️
-A **Surf-inspired web browser** built with **Vim-style modal key bindings** in mind.
+A **[Surf][surf]-inspired web browser** built on top of **[wry][wry]** and **[tao][tao]** with **Vim-style modal key bindings** in mind.
+It aims to provide the efficiency of a focused and keyboard-driven browsing experience.
 
 ---
 
@@ -40,4 +41,6 @@ cargo run --release -- https://google.com
 
 ---
 
-Peyvand aims to combine the minimalism of Surf with the efficiency of Vim for a **focused and keyboard-driven browsing experience**.
+[surf]: https://surf.suckless.org/
+[wry]: https://docs.rs/wry/latest/wry/
+[tao]: https://docs.rs/tao/latest/tao/
