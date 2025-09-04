@@ -15,7 +15,7 @@ cargo build --release
 
 ## ▶️ How to Run
 ```bash
-cargo run --release
+cargo run --release -- https://google.com
 ```
 
 ---
