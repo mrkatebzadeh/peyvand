@@ -135,8 +135,6 @@ impl KeybindingManager {
             r#"window.appState = {
   mode: "Normal",
   commandBuffer: "",
-  keyBuffer: [],
-  keyTimeout: null,
 };
 "#,
         );
@@ -144,18 +142,56 @@ impl KeybindingManager {
         js.push_str(
             r#"
 const sendCommand = (cmd) => window.ipc.postMessage(cmd);
-
-const resetKeyBuffer = () => {
-  window.appState.keyBuffer = [];
-  if (window.appState.keyTimeout) {
-    clearTimeout(window.appState.keyTimeout);
-    window.appState.keyTimeout = null;
-  }
-};
 "#,
         );
 
-        js.push_str("window.keybindings = {\n");
+        js.push_str(
+            r#"
+class KeyNode {
+  constructor() {
+    this.command = null;
+    this.children = new Map();
+  }
+}
+
+class KeyTrie {
+  constructor() {
+    this.root = new KeyNode();
+    this.currentNode = this.root;
+  }
+
+  insert(sequence, command) {
+    let node = this.root;
+    for (const key of sequence) {
+      if (!node.children.has(key)) node.children.set(key, new KeyNode());
+      node = node.children.get(key);
+    }
+    node.command = command;
+  }
+
+  processKey(key) {
+    const nextNode = this.currentNode.children.get(key);
+    if (!nextNode) {
+      this.currentNode = this.root;
+      return null; // invalid sequence
+    }
+    this.currentNode = nextNode;
+    if (nextNode.command) {
+      const cmd = nextNode.command;
+      this.currentNode = this.root;
+      return cmd;
+    }
+    return undefined; // waiting for next key
+  }
+
+  reset() {
+    this.currentNode = this.root;
+  }
+}
+"#,
+        );
+
+        js.push_str("window.keyTries = {};\n");
         for (mode, map) in &self.bindings {
             let mode_str = match mode {
                 KeyMode::Normal => "Normal",
@@ -163,32 +199,40 @@ const resetKeyBuffer = () => {
                 KeyMode::Search => "Search",
                 KeyMode::Command => "Command",
             };
-            js.push_str(&format!("  \"{}\": {{\n", mode_str));
+            js.push_str(&format!(
+                "window.keyTries['{}'] = new KeyTrie();\n",
+                mode_str
+            ));
             for (cmd, seq) in map {
-                let seq_str = seq.0.join("");
-                js.push_str(&format!("    \"{}\": \"{}\",\n", seq_str, cmd));
+                let keys: Vec<String> = seq.0.iter().map(|s| format!("\"{}\"", s)).collect();
+                js.push_str(&format!(
+                    "window.keyTries['{}'].insert([{}], \"{}\");\n",
+                    mode_str,
+                    keys.join(", "),
+                    cmd
+                ));
             }
-            js.push_str("  },\n");
         }
-        js.push_str("};\n");
 
         js.push_str(
             r#"
-function handleKey(e) {
+document.addEventListener("keydown", (e) => {
   e.stopPropagation();
 
   if (e.key === "Escape" && window.appState.mode !== "Normal") {
     window.appState.mode = "Normal";
     sendCommand("mode-normal");
-    window.appState.commandBuffer = "";
-    resetKeyBuffer();
+    if (window.keyTries[window.appState.mode])
+      window.keyTries[window.appState.mode].reset();
     e.preventDefault();
     return;
   }
 
-  let modeBindings = window.keybindings[window.appState.mode];
   let key = e.key;
   if (e.ctrlKey) key = "C-" + key;
+
+  const trie = window.keyTries[window.appState.mode];
+  if (!trie) return;
 
   if (window.appState.mode === "Command") {
     if (e.key === "Enter") {
@@ -196,7 +240,7 @@ function handleKey(e) {
       window.appState.commandBuffer = "";
       window.appState.mode = "Normal";
       sendCommand("mode-normal");
-      resetKeyBuffer();
+      trie.reset();
       e.preventDefault();
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
       window.appState.commandBuffer += e.key;
@@ -205,27 +249,18 @@ function handleKey(e) {
     return;
   }
 
-  window.appState.keyBuffer.push(key);
-  if (window.appState.keyTimeout) clearTimeout(window.appState.keyTimeout);
-  window.appState.keyTimeout = setTimeout(resetKeyBuffer, 300);
-
-  const seq = window.appState.keyBuffer.join("");
-  const cmd = modeBindings[seq];
+  const cmd = trie.processKey(key);
   if (cmd) {
     sendCommand(cmd);
-    resetKeyBuffer();
     e.preventDefault();
-
     if (cmd.startsWith("mode-")) {
       window.appState.mode = cmd.split("-")[1][0].toUpperCase() + cmd.split("-")[1].slice(1);
-      if (window.appState.mode === "Command") {
-        window.appState.commandBuffer = "";
-      }
+      if (window.appState.mode === "Command") window.appState.commandBuffer = "";
     }
+  } else if (cmd === null) {
+    trie.reset(); // invalid sequence
   }
-}
-
-document.addEventListener("keydown", handleKey);
+});
 "#,
         );
 
