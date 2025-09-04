@@ -29,6 +29,7 @@ use crate::{
     cookie::CookieManager,
     history::History,
     key::{KeyMode, KeybindingConfig, KeybindingManager},
+    statusbar::Statusbar,
 };
 use spdlog::{debug, error};
 use std::sync::mpsc::Sender;
@@ -128,17 +129,21 @@ impl State {
             None => agent::default_user_agent(),
         };
 
+        let statusbar = Statusbar::new();
+        let statusbar_js = statusbar.get_statusbar();
         // let config: KeybindingConfig = toml::from_str(toml_str).unwrap();
         let manager = KeybindingManager::new(None).unwrap();
 
         let keybinding_js = manager.export_full_js();
-        // std::fs::write("keybindings.js", &keybinding_js).unwrap();
+
+        let inject = format!("{statusbar_js}\n{keybinding_js}");
+        // std::fs::write("inject.js", &inject).unwrap();
 
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
             .with_user_agent(agent)
             .with_ipc_handler(ipc_handler)
-            .with_initialization_script(keybinding_js)
+            .with_initialization_script(inject)
             .with_navigation_handler(nav_handler);
 
         let webview = builder.build(&window)?;

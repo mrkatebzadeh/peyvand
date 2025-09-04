@@ -28,6 +28,7 @@ mod history;
 mod key;
 mod signal;
 mod state;
+mod statusbar;
 
 use app::Application;
 use signal::setup_signal_handlers;

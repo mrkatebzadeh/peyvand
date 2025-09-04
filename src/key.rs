@@ -223,6 +223,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && window.appState.mode !== "Normal") {
     window.appState.mode = "Normal";
     sendAction("mode-normal");
+    window.updateStatus(window.appState.mode);
     if (window.keyTries[window.appState.mode])
       window.keyTries[window.appState.mode].reset();
     e.preventDefault();
@@ -233,8 +234,6 @@ document.addEventListener("keydown", (e) => {
   if (e.ctrlKey) key = "C-" + key;
 
   if (window.appState.mode === "Cmd") {
-    console.log("Key is: {}", key);
-    console.log("command is: {}", window.appState.commandBuffer);
     if (key === "Enter") {
       sendAction("command:" + window.appState.commandBuffer);
       window.appState.commandBuffer = "";
@@ -244,6 +243,8 @@ document.addEventListener("keydown", (e) => {
     } else if (key.length === 1 && !e.ctrlKey && !e.metaKey) {
       window.appState.commandBuffer = window.appState.commandBuffer || "";
       window.appState.commandBuffer += key;
+
+      window.updateStatus(":" + window.appState.commandBuffer);
       e.preventDefault();
     }
     return;
@@ -260,7 +261,9 @@ document.addEventListener("keydown", (e) => {
     if (cmd.startsWith("mode-")) {
       const newMode = cmd.split("-")[1];
       window.appState.mode = newMode[0].toUpperCase() + newMode.slice(1);
+      window.updateStatus(window.appState.mode);
       if (window.appState.mode === "Cmd") {
+        window.updateStatus(":");
         window.appState.commandBuffer = "";
       }
       const newTrie = window.keyTries[window.appState.mode];
