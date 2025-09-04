@@ -128,16 +128,8 @@ impl State {
             None => agent::default_user_agent(),
         };
 
-        let toml_str = r#"
-        [bindings.normal]
-        d = "scroll-down"
-        u = "scroll-up"
-        C-d = "scroll-half-down"
-        C-u = "scroll-half-up"
-    "#;
-
-        let config: KeybindingConfig = toml::from_str(toml_str).unwrap();
-        let manager = KeybindingManager::new(Some(&config)).unwrap();
+        // let config: KeybindingConfig = toml::from_str(toml_str).unwrap();
+        let manager = KeybindingManager::new(None).unwrap();
 
         let keybinding_js = manager.export_full_js();
         std::fs::write("keybindings.js", &keybinding_js).unwrap();

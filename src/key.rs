@@ -44,8 +44,6 @@ impl Display for KeyMode {
     }
 }
 
-pub type Command = String;
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KeySequence(pub Vec<String>);
 
@@ -199,18 +197,21 @@ class KeyTrie {
                 KeyMode::Search => "Search",
                 KeyMode::Cmd => "Cmd",
             };
-            js.push_str(&format!(
-                "window.keyTries['{}'] = new KeyTrie();\n",
-                mode_str
-            ));
-            for (cmd, seq) in map {
-                let keys: Vec<String> = seq.0.iter().map(|s| format!("\"{}\"", s)).collect();
+
+            if mode_str != "Cmd" {
                 js.push_str(&format!(
-                    "window.keyTries['{}'].insert([{}], \"{}\");\n",
-                    mode_str,
-                    keys.join(", "),
-                    cmd
+                    "window.keyTries['{}'] = new KeyTrie();\n",
+                    mode_str
                 ));
+                for (cmd, seq) in map {
+                    let keys: Vec<String> = seq.0.iter().map(|s| format!("\"{}\"", s)).collect();
+                    js.push_str(&format!(
+                        "window.keyTries['{}'].insert([{}], \"{}\");\n",
+                        mode_str,
+                        keys.join(", "),
+                        cmd
+                    ));
+                }
             }
         }
 
@@ -231,34 +232,43 @@ document.addEventListener("keydown", (e) => {
   let key = e.key;
   if (e.ctrlKey) key = "C-" + key;
 
-  const trie = window.keyTries[window.appState.mode];
-  if (!trie) return;
-
   if (window.appState.mode === "Cmd") {
-    if (e.key === "Enter") {
+    console.log("Key is: {}", key);
+    console.log("command is: {}", window.appState.commandBuffer);
+    if (key === "Enter") {
       sendAction("command:" + window.appState.commandBuffer);
       window.appState.commandBuffer = "";
       window.appState.mode = "Normal";
       sendAction("mode-normal");
-      trie.reset();
       e.preventDefault();
-    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-      window.appState.commandBuffer += e.key;
+    } else if (key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      window.appState.commandBuffer = window.appState.commandBuffer || "";
+      window.appState.commandBuffer += key;
       e.preventDefault();
     }
     return;
-  }
+  } else {
+
+  const trie = window.keyTries[window.appState.mode];
+  if (!trie) return;
 
   const cmd = trie.processKey(key);
   if (cmd) {
     sendAction(cmd);
     e.preventDefault();
+
     if (cmd.startsWith("mode-")) {
-      window.appState.mode = cmd.split("-")[1][0].toUpperCase() + cmd.split("-")[1].slice(1);
-      if (window.appState.mode === "Cmd") window.appState.commandBuffer = "";
+      const newMode = cmd.split("-")[1];
+      window.appState.mode = newMode[0].toUpperCase() + newMode.slice(1);
+      if (window.appState.mode === "Cmd") {
+        window.appState.commandBuffer = "";
+      }
+      const newTrie = window.keyTries[window.appState.mode];
+      if (newTrie) newTrie.reset();
     }
   } else if (cmd === null) {
     trie.reset(); // invalid sequence
+  }
   }
 });
 "#,
