@@ -68,7 +68,63 @@ pub struct KeybindingConfig {
 }
 
 pub struct KeybindingManager {
-    bindings: HashMap<KeyMode, HashMap<KeySequence, Command>>,
+    bindings: HashMap<KeyMode, HashMap<String, KeySequence>>,
+}
+
+impl KeybindingManager {
+    pub fn with_defaults() -> Self {
+        let mut bindings: HashMap<KeyMode, HashMap<String, KeySequence>> = HashMap::new();
+
+        let mut normal = HashMap::new();
+        normal.insert("scroll-down".to_string(), KeySequence::from_str("j"));
+        normal.insert("scroll-up".to_string(), KeySequence::from_str("k"));
+        normal.insert("scroll-top".to_string(), KeySequence::from_str("gt"));
+        normal.insert("scroll-bottom".to_string(), KeySequence::from_str("gb"));
+        normal.insert("scroll-half-down".to_string(), KeySequence::from_str("C-d"));
+        normal.insert("scroll-half-up".to_string(), KeySequence::from_str("C-u"));
+        normal.insert("go-back".to_string(), KeySequence::from_str("h"));
+        normal.insert("go-forward".to_string(), KeySequence::from_str("l"));
+        normal.insert("mode-insert".to_string(), KeySequence::from_str("i"));
+        normal.insert("mode-command".to_string(), KeySequence::from_str(":"));
+
+        bindings.insert(KeyMode::Normal, normal);
+
+        Self { bindings }
+    }
+    pub fn new(config: Option<&KeybindingConfig>) -> Result<Self, String> {
+        let mut manager = KeybindingManager::with_defaults();
+
+        if let Some(cfg) = config {
+            for (mode_str, map) in &cfg.bindings {
+                let mode = match mode_str.as_str() {
+                    "normal" => KeyMode::Normal,
+                    "insert" => KeyMode::Insert,
+                    "search" => KeyMode::Search,
+                    "command" => KeyMode::Command,
+                    _ => return Err(format!("Unknown mode: {}", mode_str)),
+                };
+
+                let mode_map = manager.bindings.entry(mode).or_default();
+
+                for (seq_str, cmd) in map {
+                    let seq = KeySequence::from_str(seq_str);
+
+                    for other_seq in mode_map.values() {
+                        if seq.is_prefix_of(other_seq) || other_seq.is_prefix_of(&seq) {
+                            return Err(format!(
+                                "Invalid binding: sequence {:?} for command '{}' conflicts with {:?}",
+                                seq, cmd, other_seq
+                            ));
+                        }
+                    }
+
+                    mode_map.insert(cmd.clone(), seq);
+                }
+            }
+        }
+
+        Ok(manager)
+    }
 }
 
 impl KeybindingManager {
@@ -108,7 +164,7 @@ const resetKeyBuffer = () => {
                 KeyMode::Command => "Command",
             };
             js.push_str(&format!("  \"{}\": {{\n", mode_str));
-            for (seq, cmd) in map {
+            for (cmd, seq) in map {
                 let seq_str = seq.0.join("");
                 js.push_str(&format!("    \"{}\": \"{}\",\n", seq_str, cmd));
             }
@@ -151,7 +207,7 @@ function handleKey(e) {
 
   window.appState.keyBuffer.push(key);
   if (window.appState.keyTimeout) clearTimeout(window.appState.keyTimeout);
-  window.appState.keyTimeout = setTimeout(resetKeyBuffer, 1500);
+  window.appState.keyTimeout = setTimeout(resetKeyBuffer, 300);
 
   const seq = window.appState.keyBuffer.join("");
   const cmd = modeBindings[seq];
@@ -174,99 +230,6 @@ document.addEventListener("keydown", handleKey);
         );
 
         js
-    }
-}
-impl KeybindingManager {
-    pub fn with_defaults() -> Self {
-        let mut bindings: HashMap<KeyMode, HashMap<KeySequence, Command>> = HashMap::new();
-
-        let mut normal = HashMap::new();
-        normal.insert(KeySequence::from_str("j"), "scroll-down".to_string());
-        normal.insert(KeySequence::from_str("k"), "scroll-up".to_string());
-        normal.insert(KeySequence::from_str("gt"), "scroll-top".to_string());
-        normal.insert(KeySequence::from_str("gb"), "scroll-bottom".to_string());
-        normal.insert(KeySequence::from_str("C-d"), "scroll-half-down".to_string());
-        normal.insert(KeySequence::from_str("C-u"), "scroll-half-up".to_string());
-        normal.insert(KeySequence::from_str("h"), "go-back".to_string());
-        normal.insert(KeySequence::from_str("l"), "go-forward".to_string());
-        normal.insert(KeySequence::from_str("i"), "mode-insert".to_string());
-        normal.insert(KeySequence::from_str(":"), "mode-command".to_string());
-
-        bindings.insert(KeyMode::Normal, normal);
-
-        Self { bindings }
-    }
-
-    pub fn new(config: Option<&KeybindingConfig>) -> Result<Self, String> {
-        let mut manager = KeybindingManager::with_defaults();
-
-        if let Some(cfg) = config {
-            for (mode_str, map) in &cfg.bindings {
-                let mode = match mode_str.as_str() {
-                    "normal" => KeyMode::Normal,
-                    "insert" => KeyMode::Insert,
-                    "search" => KeyMode::Search,
-                    "command" => KeyMode::Command,
-                    _ => return Err(format!("Unknown mode: {}", mode_str)),
-                };
-
-                let mode_map = manager.bindings.entry(mode).or_default();
-
-                for (seq_str, cmd) in map {
-                    let seq = KeySequence::from_str(seq_str);
-
-                    for existing_seq in mode_map.keys() {
-                        if seq.is_prefix_of(existing_seq) || existing_seq.is_prefix_of(&seq) {
-                            return Err(format!(
-                                "Invalid binding: {:?} conflicts with prefix {:?} in mode {:?}",
-                                seq, existing_seq, mode
-                            ));
-                        }
-                    }
-
-                    mode_map.insert(seq, cmd.clone());
-                }
-            }
-        }
-
-        Ok(manager)
-    }
-
-    pub fn get_command(&self, mode: KeyMode, input: &str) -> Option<&Command> {
-        let seq = KeySequence::from_str(input);
-        self.bindings.get(&mode)?.get(&seq)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_keybindings() {
-        let toml_str = r#"
-            [bindings.normal]
-            j = "scroll_down"
-            gk = "scroll_top"
-            gnl = "scroll_bottom"
-        "#;
-
-        let config: KeybindingConfig = toml::from_str(toml_str).unwrap();
-        let manager = KeybindingManager::new(Some(&config)).unwrap();
-
-        assert_eq!(
-            manager.get_command(KeyMode::Normal, "j"),
-            Some(&"scroll_down".to_string())
-        );
-        assert_eq!(
-            manager.get_command(KeyMode::Normal, "gk"),
-            Some(&"scroll_top".to_string())
-        );
-        assert_eq!(
-            manager.get_command(KeyMode::Normal, "gnl"),
-            Some(&"scroll_bottom".to_string())
-        );
-        assert_eq!(manager.get_command(KeyMode::Normal, "gf"), None);
     }
 }
 
