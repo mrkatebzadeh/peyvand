@@ -23,7 +23,12 @@ use std::sync::mpsc;
 use wry::http::Request;
 
 use crate::{
-    agent, args::Args, command::Command, cookie::CookieManager, history::History, key::KeyMode,
+    agent,
+    args::Args,
+    command::Command,
+    cookie::CookieManager,
+    history::History,
+    key::{KeyMode, KeybindingConfig, KeybindingManager},
 };
 use spdlog::{debug, error};
 use std::sync::mpsc::Sender;
@@ -34,7 +39,6 @@ use tao::{
 use wry::WebViewBuilder;
 
 const SCROLL_STEP: i32 = 40;
-const KEYBINDING_JS: &str = include_str!("./keybindings.js");
 
 fn make_ipc_handler(tx: Sender<Command>) -> impl Fn(Request<String>) + 'static {
     move |req: Request<String>| {
@@ -124,11 +128,24 @@ impl State {
             None => agent::default_user_agent(),
         };
 
+        let toml_str = r#"
+        [bindings.normal]
+        d = "scroll-down"
+        u = "scroll-up"
+        C-d = "scroll-half-down"
+        C-u = "scroll-half-up"
+    "#;
+
+        let config: KeybindingConfig = toml::from_str(toml_str).unwrap();
+        let manager = KeybindingManager::new(Some(&config)).unwrap();
+
+        let keybinding_js = manager.export_full_js();
+
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
             .with_user_agent(agent)
             .with_ipc_handler(ipc_handler)
-            .with_initialization_script(KEYBINDING_JS)
+            .with_initialization_script(keybinding_js)
             .with_navigation_handler(nav_handler);
 
         let webview = builder.build(&window)?;
@@ -211,12 +228,12 @@ impl State {
     }
 
     pub fn scroll_half_down(&self) {
-        let script = format!("window.scrollBy(0, {});", SCROLL_STEP * 3);
+        let script = format!("window.scrollBy(0, {});", SCROLL_STEP * 6);
         let _ = self.webview.evaluate_script(&script);
     }
 
     pub fn scroll_half_up(&self) {
-        let script = format!("window.scrollBy(0, -{});", SCROLL_STEP * 3);
+        let script = format!("window.scrollBy(0, -{});", SCROLL_STEP * 6);
         let _ = self.webview.evaluate_script(&script);
     }
 
