@@ -66,42 +66,15 @@ fn handle_event(event: Event<'_, ()>, control_flow: &mut ControlFlow) {
     }
 }
 
-fn dispatch_act(state: &Mutex<State>, control_flow: &mut ControlFlow, cmd: Action) {
+fn dispatch_act(state: &Mutex<State>, control_flow: &mut ControlFlow, act: Action) {
     let mode = state.lock().unwrap().get_key_mode();
-    debug!("Action: {:#?}", cmd);
+    debug!("Action: {:#?}", act);
 
     match mode {
-        KeyMode::Normal => match cmd {
-            Action::GoBack => state.lock().unwrap().go_back(),
-            Action::GoForward => state.lock().unwrap().go_forward(),
-
-            Action::ScrollDown => state.lock().unwrap().scroll_down(),
-            Action::ScrollUp => state.lock().unwrap().scroll_up(),
-
-            Action::ScrollHalfDown => state.lock().unwrap().scroll_half_down(),
-            Action::ScrollHalfUp => state.lock().unwrap().scroll_half_up(),
-
-            Action::ScrollTop => state.lock().unwrap().scroll_top(),
-            Action::ScrollBottom => state.lock().unwrap().scroll_bottom(),
-
-            Action::NormalMode => state.lock().unwrap().set_key_mode(KeyMode::Normal),
-            Action::InsertMode => state.lock().unwrap().set_key_mode(KeyMode::Insert),
-
-            Action::CmdMode => state.lock().unwrap().set_key_mode(KeyMode::Cmd),
-
-            Action::Exit => {
-                state.lock().unwrap().exit();
-                *control_flow = ControlFlow::Exit;
-            }
-        },
-        KeyMode::Insert => {
-            if let Action::NormalMode = cmd {
-                state.lock().unwrap().set_key_mode(KeyMode::Normal);
-            }
-        }
-        KeyMode::Cmd => {
-            if let Action::NormalMode = cmd {
-                state.lock().unwrap().set_key_mode(KeyMode::Normal);
+        KeyMode::Normal => act.apply(&mut state.lock().unwrap(), control_flow),
+        KeyMode::Insert | KeyMode::Cmd => {
+            if let Action::NormalMode = act {
+                act.apply(&mut state.lock().unwrap(), control_flow)
             }
         }
         _ => unimplemented!(),

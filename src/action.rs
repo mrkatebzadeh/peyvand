@@ -1,4 +1,4 @@
-/* command.rs
+/* action.rs
 
 *
 * Author: M.R.Siavash Katebzadeh <mr@katebzadeh.xyz>
@@ -19,7 +19,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#[derive(Default, Clone, Copy, Debug)]
+use strum::AsRefStr;
+use strum_macros::{Display, EnumIter, EnumString};
+use tao::event_loop::ControlFlow;
+
+use crate::{key::KeyMode, state::State};
+
+#[derive(AsRefStr, Default, Clone, Copy, Debug, EnumIter, EnumString, Display)]
+#[strum(serialize_all = "kebab-case")]
 pub enum Action {
     GoBack,
     GoForward,
@@ -35,4 +42,54 @@ pub enum Action {
     InsertMode,
     CmdMode,
 }
-/* command.rs ends here */
+
+impl Action {
+    pub fn apply(&self, state: &mut State, control_flow: &mut ControlFlow) {
+        match self {
+            Action::GoBack => state.go_back(),
+            Action::GoForward => state.go_forward(),
+            Action::ScrollDown => state.scroll_down(),
+            Action::ScrollUp => state.scroll_up(),
+            Action::ScrollHalfDown => state.scroll_half_down(),
+            Action::ScrollHalfUp => state.scroll_half_up(),
+            Action::ScrollTop => state.scroll_top(),
+            Action::ScrollBottom => state.scroll_bottom(),
+            Action::NormalMode => state.set_key_mode(KeyMode::Normal),
+            Action::InsertMode => state.set_key_mode(KeyMode::Insert),
+            Action::CmdMode => state.set_key_mode(KeyMode::Cmd),
+            Action::Exit => {
+                state.exit();
+                *control_flow = ControlFlow::Exit;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_action_display() {
+        let actions = [
+            (Action::GoBack, "go-back"),
+            (Action::GoForward, "go-forward"),
+            (Action::ScrollDown, "scroll-down"),
+            (Action::ScrollUp, "scroll-up"),
+            (Action::ScrollTop, "scroll-top"),
+            (Action::ScrollBottom, "scroll-bottom"),
+            (Action::ScrollHalfUp, "scroll-half-up"),
+            (Action::ScrollHalfDown, "scroll-half-down"),
+            (Action::Exit, "exit"),
+            (Action::NormalMode, "normal-mode"),
+            (Action::InsertMode, "insert-mode"),
+            (Action::CmdMode, "cmd-mode"),
+        ];
+
+        for (action, expected) in actions.iter() {
+            assert_eq!(format!("{}", action), *expected);
+        }
+    }
+}
+
+/* action.rs ends here */

@@ -33,6 +33,7 @@ use crate::{
 };
 use spdlog::{debug, error};
 use std::sync::mpsc::Sender;
+use strum::IntoEnumIterator;
 use tao::{
     event_loop::EventLoop,
     window::{Window, WindowBuilder},
@@ -54,41 +55,8 @@ fn make_ipc_handler(tx: Sender<Action>) -> impl Fn(Request<String>) + 'static {
                 }
             };
         }
-        match req.body().as_ref() {
-            "go-back" => {
-                tx.send(Action::GoBack).ok();
-            }
-            "go-forward" => {
-                tx.send(Action::GoForward).ok();
-            }
-            "mode-normal" => {
-                tx.send(Action::NormalMode).ok();
-            }
-            "mode-insert" => {
-                tx.send(Action::InsertMode).ok();
-            }
-            "mode-cmd" => {
-                tx.send(Action::CmdMode).ok();
-            }
-            "scroll-down" => {
-                tx.send(Action::ScrollDown).ok();
-            }
-            "scroll-up" => {
-                tx.send(Action::ScrollUp).ok();
-            }
-            "scroll-top" => {
-                tx.send(Action::ScrollTop).ok();
-            }
-            "scroll-bottom" => {
-                tx.send(Action::ScrollBottom).ok();
-            }
-            "scroll-half-down" => {
-                tx.send(Action::ScrollHalfDown).ok();
-            }
-            "scroll-half-up" => {
-                tx.send(Action::ScrollHalfUp).ok();
-            }
-            _ => {}
+        if let Some(action) = Action::iter().find(|a| a.as_ref() == req.body().as_str()) {
+            tx.send(action).ok();
         }
     }
 }
@@ -191,15 +159,7 @@ impl State {
     pub fn set_key_mode(&mut self, mode: KeyMode) {
         self.key_mode = mode;
 
-        let script = format!(
-            "window.appState = {{ mode: '{mode}' }};",
-            mode = match mode {
-                KeyMode::Normal => "Normal",
-                KeyMode::Insert => "Insert",
-                KeyMode::Search => "Search",
-                KeyMode::Cmd => "Cmd",
-            }
-        );
+        let script = format!("window.appState = {{ mode: '{}' }};", mode);
 
         debug!("Mode: {:#?}", mode);
         let _ = self.webview.evaluate_script(&script);
