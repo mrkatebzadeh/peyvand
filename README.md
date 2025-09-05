@@ -31,12 +31,12 @@ cargo run --release -- https://google.com
 - ✅ Status bar for mode & command display
 - ✅ URL manipulation (change, copy, paste, reload)
 - ✅ Search text within page
+- ✅ Follow links with hints (like Vimium-style navigation)
 
 ---
 
 ## 🎯 Upcoming
 
-- ⬜ Follow links with hints (like Vimium-style navigation)
 - ⬜ Configurable homepage
 - ⬜ Multi tab
 
