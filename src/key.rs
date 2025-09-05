@@ -100,6 +100,9 @@ impl KeybindingManager {
         normal.insert(Action::CopyURL.to_string(), KeySequence::from_str("uy"));
         normal.insert(Action::PasteURL.to_string(), KeySequence::from_str("up"));
 
+        normal.insert(Action::SearchNext.to_string(), KeySequence::from_str("n"));
+        normal.insert(Action::SearchPrev.to_string(), KeySequence::from_str("N"));
+        normal.insert(Action::SearchMode.to_string(), KeySequence::from_str("/"));
         bindings.insert(KeyMode::Normal, normal);
 
         Self { bindings }
@@ -154,6 +157,7 @@ impl KeybindingManager {
             r#"window.appState = {
   mode: "Normal",
   commandBuffer: "",
+  searchBuffer: "",
 };
 "#,
         );
@@ -266,7 +270,30 @@ document.addEventListener("keydown", (e) => {
       e.preventDefault();
     }
     return;
-  } else {
+  } else if (window.appState.mode === "Search") {
+    if (key === "Enter") {
+      sendAction("search:" + window.appState.searchBuffer);
+      window.appState.mode = "Normal";
+      sendAction("normal-mode");
+      window.updateStatus(window.appState.mode);
+      e.preventDefault();
+    } else if (key === "Backspace") {
+        if (window.appState.searchBuffer && window.appState.searchBuffer.length > 0) {
+            window.appState.searchBuffer = window.appState.searchBuffer.slice(0, -1);
+            window.searchHighlight(window.appState.searchBuffer);
+            window.updateStatus("/" + window.appState.searchBuffer);
+        }
+        e.preventDefault();
+     }else if (key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      window.appState.searchBuffer = window.appState.searchBuffer || "";
+      window.appState.searchBuffer += key;
+      window.searchHighlight(window.appState.searchBuffer);
+      window.updateStatus("/" + window.appState.searchBuffer);
+      e.preventDefault();
+    }
+    return;
+  }
+  else {
 
   const trie = window.keyTries[window.appState.mode];
   if (!trie) return;
@@ -296,7 +323,9 @@ document.addEventListener("keydown", (e) => {
             break;
         case "search-mode":
             displayMode = "Search";
-            window.updateStatus(displayMode);
+
+            window.appState.searchBuffer = "";
+            window.updateStatus("/");
             break;
     }
 

@@ -29,6 +29,7 @@ use crate::{
     cookie::CookieManager,
     history::History,
     key::{KeyMode, KeybindingManager},
+    search::{self, SearchState},
     statusbar::Statusbar,
     url::Url,
 };
@@ -95,6 +96,7 @@ pub struct State {
     pub cookie_mgr: CookieManager,
     pub key_mgr: KeybindingManager,
     pub clipboard: Clipboard,
+    pub search: SearchState,
 }
 
 impl State {
@@ -104,6 +106,8 @@ impl State {
         url: S,
     ) -> anyhow::Result<(Self, mpsc::Receiver<Action>, mpsc::Receiver<String>)> {
         let clipboard = Clipboard::new().unwrap();
+        let search = SearchState::new();
+
         let (cmd_tx, cmd_rx) = mpsc::channel::<Action>();
         let ipc_handler = make_ipc_handler(cmd_tx.clone());
 
@@ -129,7 +133,9 @@ impl State {
         let url_mgr = Url::new();
         let url_js = url_mgr.get_url();
 
-        let inject = format!("{statusbar_js}\n{url_js}\n{keybinding_js}");
+        let search_js = SearchState::get_js();
+
+        let inject = format!("{statusbar_js}\n{url_js}\n{search_js}\n{keybinding_js}");
         // std::fs::write("inject.js", &inject).unwrap();
 
         let builder = WebViewBuilder::new()
@@ -144,7 +150,7 @@ impl State {
         let cookie_mgr = CookieManager::new(args.cookiefile.clone(), args.cookie_policies.clone());
         cookie_mgr.load_cookies(&webview)?;
 
-        let history = History::new(url_js);
+        let history = History::new(url.as_ref());
         Ok((
             Self {
                 webview,
@@ -154,6 +160,7 @@ impl State {
                 cookie_mgr,
                 key_mgr,
                 clipboard,
+                search,
             },
             cmd_rx,
             nav_rx,
@@ -164,7 +171,6 @@ impl State {
 impl State {
     pub fn set_url<S: AsRef<str>>(&mut self, url: S) {
         self.history.push(url.as_ref());
-
         self.window.set_title(self.history.current());
     }
 
@@ -268,6 +274,19 @@ impl State {
         self.set_url(&url);
         let script = format!(r#"window.location.href = "{}";"#, url);
         let _ = self.webview.evaluate_script(&script);
+    }
+
+    pub fn search(&mut self, needle: &str) {
+        let script = format!("window.searchHighlight({:?});", needle);
+        let _ = self.webview.evaluate_script(&script);
+    }
+
+    pub fn search_next(&mut self) {
+        let _ = self.webview.evaluate_script("window.searchNext();");
+    }
+
+    pub fn search_prev(&mut self) {
+        let _ = self.webview.evaluate_script("window.searchPrev();");
     }
 }
 

@@ -42,12 +42,16 @@ pub enum Action {
     NormalMode,
     InsertMode,
     CmdMode,
+    SearchMode,
     ShowURL,
     ChangeURL(String),
     HardRefreshURL,
     SoftRefreshURL,
     CopyURL,
     PasteURL,
+    Search(String),
+    SearchNext,
+    SearchPrev,
 }
 
 impl Action {
@@ -64,6 +68,7 @@ impl Action {
             Action::NormalMode => state.set_key_mode(KeyMode::Normal),
             Action::InsertMode => state.set_key_mode(KeyMode::Insert),
             Action::CmdMode => state.set_key_mode(KeyMode::Cmd),
+            Action::SearchMode => state.set_key_mode(KeyMode::Search),
             Action::ShowHelp => state.show_help(),
             Action::ShowURL => {
                 state.set_key_mode(KeyMode::Insert);
@@ -77,6 +82,12 @@ impl Action {
             Action::SoftRefreshURL => state.refresh_url(false),
             Action::CopyURL => state.copy_url(),
             Action::PasteURL => state.paste_url(),
+
+            Action::Search(needle) => {
+                state.search(needle);
+            }
+            Action::SearchNext => state.search_next(),
+            Action::SearchPrev => state.search_prev(),
 
             Action::Exit => {
                 state.exit();

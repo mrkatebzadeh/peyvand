@@ -26,6 +26,7 @@ mod args;
 mod cookie;
 mod history;
 mod key;
+mod search;
 mod signal;
 mod state;
 mod statusbar;
