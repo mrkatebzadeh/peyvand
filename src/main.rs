@@ -24,6 +24,7 @@ mod agent;
 mod app;
 mod args;
 mod cookie;
+mod hint;
 mod history;
 mod key;
 mod search;

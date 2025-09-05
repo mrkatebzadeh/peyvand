@@ -43,6 +43,7 @@ pub enum Action {
     InsertMode,
     CmdMode,
     SearchMode,
+    HintMode,
     ShowURL,
     ChangeURL(String),
     HardRefreshURL,
@@ -68,6 +69,7 @@ impl Action {
             Action::NormalMode => state.set_key_mode(KeyMode::Normal),
             Action::InsertMode => state.set_key_mode(KeyMode::Insert),
             Action::CmdMode => state.set_key_mode(KeyMode::Cmd),
+            Action::HintMode => state.set_key_mode(KeyMode::Hint),
             Action::SearchMode => state.set_key_mode(KeyMode::Search),
             Action::ShowHelp => state.show_help(),
             Action::ShowURL => {

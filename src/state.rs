@@ -27,6 +27,7 @@ use crate::{
     agent,
     args::Args,
     cookie::CookieManager,
+    hint::Hint,
     history::History,
     key::{KeyMode, KeybindingManager},
     search::Search,
@@ -138,8 +139,10 @@ impl State {
 
         let search_js = Search::get_js();
 
-        let inject = format!("{statusbar_js}\n{url_js}\n{search_js}\n{keybinding_js}");
-        std::fs::write("inject.js", &inject).unwrap();
+        let hint_js = Hint::get_js();
+
+        let inject = format!("{statusbar_js}\n{url_js}\n{search_js}\n{hint_js}\n{keybinding_js}");
+        // std::fs::write("inject.js", &inject).unwrap();
 
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())

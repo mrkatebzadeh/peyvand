@@ -35,6 +35,7 @@ pub enum KeyMode {
     Insert,
     Search,
     Cmd,
+    Hint,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -86,6 +87,7 @@ impl KeybindingManager {
         normal.insert(Action::GoForward.to_string(), KeySequence::from_str("l"));
         normal.insert(Action::InsertMode.to_string(), KeySequence::from_str("i"));
         normal.insert(Action::CmdMode.to_string(), KeySequence::from_str(":"));
+        normal.insert(Action::HintMode.to_string(), KeySequence::from_str("f"));
 
         normal.insert(Action::ShowHelp.to_string(), KeySequence::from_str("?"));
         normal.insert(Action::ShowURL.to_string(), KeySequence::from_str("go"));
@@ -241,6 +243,7 @@ document.addEventListener("keydown", (e) => {
   e.stopPropagation();
 
   if (e.key === "Escape" && window.appState.mode !== "Normal") {
+    window.clearHints();
     window.appState.mode = "Normal";
     sendAction("normal-mode");
     window.updateStatus(window.appState.mode);
@@ -253,7 +256,29 @@ document.addEventListener("keydown", (e) => {
   let key = e.key;
   if (e.ctrlKey) key = "C-" + key;
 
-  if (window.appState.mode === "Cmd") {
+  if (window.appState.mode === "Hint") {
+    if (key === "Escape") {
+      window.clearHints();
+      window.appState.mode = "Normal";
+      sendAction("normal-mode");
+
+      window.updateStatus(window.appState.mode);
+      e.preventDefault();
+    }
+    window.hintState.buffer += e.key.toUpperCase();
+        const match = window.hintState.hints.find(
+            h => h.label === window.hintState.buffer
+        );
+
+        if (match) {
+
+            window.appState.mode = "Normal";
+            sendAction("normal-mode");
+            match.link.click();
+            window.clearHints();
+    }
+    return;
+  } else if (window.appState.mode === "Cmd") {
     if (key === "Enter") {
       sendAction("command:" + window.appState.commandBuffer);
       window.appState.commandBuffer = "";
@@ -307,7 +332,7 @@ document.addEventListener("keydown", (e) => {
     sendAction(cmd);
     e.preventDefault();
 
-  const modeCommands = ["normal-mode", "insert-mode", "cmd-mode", "search-mode"];
+  const modeCommands = ["normal-mode", "insert-mode", "cmd-mode", "search-mode", "hint-mode"];
 
   if (modeCommands.includes(cmd)) {
     let displayMode = "";
@@ -330,6 +355,11 @@ document.addEventListener("keydown", (e) => {
 
             window.appState.searchBuffer = "";
             window.updateStatus("/");
+            break;
+        case "hint-mode":
+            displayMode = "Hint";
+            window.updateStatus(displayMode);
+            window.showHints();
             break;
     }
 
