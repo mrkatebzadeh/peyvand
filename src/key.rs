@@ -19,29 +19,22 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+use crate::action::Action;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::str::FromStr;
+use strum::Display;
+use strum::{AsRefStr, EnumIter, EnumString};
 
-#[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    AsRefStr, Default, Clone, Copy, Debug, EnumIter, EnumString, Display, PartialEq, Eq, Hash,
+)]
 pub enum KeyMode {
     #[default]
     Normal,
     Insert,
     Search,
     Cmd,
-}
-
-impl Display for KeyMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            KeyMode::Normal => "Normal",
-            KeyMode::Insert => "Insert",
-            KeyMode::Search => "Search",
-            KeyMode::Cmd => "Cmd",
-        };
-        write!(f, "{}", s)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -74,16 +67,27 @@ impl KeybindingManager {
         let mut bindings: HashMap<KeyMode, HashMap<String, KeySequence>> = HashMap::new();
 
         let mut normal = HashMap::new();
-        normal.insert("scroll-down".to_string(), KeySequence::from_str("j"));
-        normal.insert("scroll-up".to_string(), KeySequence::from_str("k"));
-        normal.insert("scroll-top".to_string(), KeySequence::from_str("gt"));
-        normal.insert("scroll-bottom".to_string(), KeySequence::from_str("gb"));
-        normal.insert("scroll-half-down".to_string(), KeySequence::from_str("C-d"));
-        normal.insert("scroll-half-up".to_string(), KeySequence::from_str("C-u"));
-        normal.insert("go-back".to_string(), KeySequence::from_str("h"));
-        normal.insert("go-forward".to_string(), KeySequence::from_str("l"));
-        normal.insert("mode-insert".to_string(), KeySequence::from_str("i"));
-        normal.insert("mode-cmd".to_string(), KeySequence::from_str(":"));
+        normal.insert(Action::ScrollDown.to_string(), KeySequence::from_str("j"));
+        normal.insert(Action::ScrollUp.to_string(), KeySequence::from_str("k"));
+        normal.insert(Action::ScrollTop.to_string(), KeySequence::from_str("gt"));
+        normal.insert(
+            Action::ScrollBottom.to_string(),
+            KeySequence::from_str("gb"),
+        );
+        normal.insert(
+            Action::ScrollHalfDown.to_string(),
+            KeySequence::from_str("C-d"),
+        );
+        normal.insert(
+            Action::ScrollHalfUp.to_string(),
+            KeySequence::from_str("C-u"),
+        );
+        normal.insert(Action::GoBack.to_string(), KeySequence::from_str("h"));
+        normal.insert(Action::GoForward.to_string(), KeySequence::from_str("l"));
+        normal.insert(Action::InsertMode.to_string(), KeySequence::from_str("i"));
+        normal.insert(Action::CmdMode.to_string(), KeySequence::from_str(":"));
+
+        normal.insert(Action::ShowHelp.to_string(), KeySequence::from_str("?"));
 
         bindings.insert(KeyMode::Normal, normal);
 
@@ -94,13 +98,8 @@ impl KeybindingManager {
 
         if let Some(cfg) = config {
             for (mode_str, map) in &cfg.bindings {
-                let mode = match mode_str.as_str() {
-                    "normal" => KeyMode::Normal,
-                    "insert" => KeyMode::Insert,
-                    "search" => KeyMode::Search,
-                    "cmd" => KeyMode::Cmd,
-                    _ => return Err(format!("Unknown mode: {}", mode_str)),
-                };
+                let mode = KeyMode::from_str(&mode_str.to_lowercase())
+                    .map_err(|_| format!("Unknown mode: {}", mode_str))?;
 
                 let mode_map = manager.bindings.entry(mode).or_default();
 
@@ -126,6 +125,17 @@ impl KeybindingManager {
 }
 
 impl KeybindingManager {
+    pub fn get_help_map(&self, mode: KeyMode) -> HashMap<String, String> {
+        self.bindings
+            .get(&mode)
+            .map(|map| {
+                map.iter()
+                    .map(|(key, seq)| (key.clone(), seq.0.join("")))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     pub fn export_full_js(&self) -> String {
         let mut js = String::new();
 
@@ -191,12 +201,7 @@ class KeyTrie {
 
         js.push_str("window.keyTries = {};\n");
         for (mode, map) in &self.bindings {
-            let mode_str = match mode {
-                KeyMode::Normal => "Normal",
-                KeyMode::Insert => "Insert",
-                KeyMode::Search => "Search",
-                KeyMode::Cmd => "Cmd",
-            };
+            let mode_str = mode.to_string();
 
             if mode_str != "Cmd" {
                 js.push_str(&format!(
@@ -222,7 +227,7 @@ document.addEventListener("keydown", (e) => {
 
   if (e.key === "Escape" && window.appState.mode !== "Normal") {
     window.appState.mode = "Normal";
-    sendAction("mode-normal");
+    sendAction("normal-mode");
     window.updateStatus(window.appState.mode);
     if (window.keyTries[window.appState.mode])
       window.keyTries[window.appState.mode].reset();
@@ -238,7 +243,9 @@ document.addEventListener("keydown", (e) => {
       sendAction("command:" + window.appState.commandBuffer);
       window.appState.commandBuffer = "";
       window.appState.mode = "Normal";
-      sendAction("mode-normal");
+      sendAction("normal-mode");
+
+      window.updateStatus(window.appState.mode);
       e.preventDefault();
     } else if (key.length === 1 && !e.ctrlKey && !e.metaKey) {
       window.appState.commandBuffer = window.appState.commandBuffer || "";
@@ -258,24 +265,82 @@ document.addEventListener("keydown", (e) => {
     sendAction(cmd);
     e.preventDefault();
 
-    if (cmd.startsWith("mode-")) {
-      const newMode = cmd.split("-")[1];
-      window.appState.mode = newMode[0].toUpperCase() + newMode.slice(1);
-      window.updateStatus(window.appState.mode);
-      if (window.appState.mode === "Cmd") {
-        window.updateStatus(":");
-        window.appState.commandBuffer = "";
-      }
-      const newTrie = window.keyTries[window.appState.mode];
-      if (newTrie) newTrie.reset();
+  const modeCommands = ["normal-mode", "insert-mode", "cmd-mode", "search-mode"];
+
+  if (modeCommands.includes(cmd)) {
+    let displayMode = "";
+    switch (cmd) {
+        case "normal-mode":
+            displayMode = "Normal";
+            window.updateStatus(displayMode);
+            break;
+        case "insert-mode":
+            displayMode = "Insert";
+            window.updateStatus(displayMode);
+            break;
+        case "cmd-mode":
+            displayMode = "Cmd";
+            window.appState.commandBuffer = "";
+            window.updateStatus(":");
+            break;
+        case "search-mode":
+            displayMode = "Search";
+            window.updateStatus(displayMode);
+            break;
     }
-  } else if (cmd === null) {
+
+    window.appState.mode = displayMode;
+
+    const newTrie = window.keyTries[displayMode];
+    if (newTrie) newTrie.reset();
+}
+    } else if (cmd === null) {
     trie.reset(); // invalid sequence
-  }
+   }
   }
 });
 "#,
         );
+
+        js.push_str(
+r#"
+window.overlays = window.overlays || {};
+
+window.showHelp = function(bindings) {
+    if (window.overlays.help) window.overlays.help.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "help-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.bottom = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.maxHeight = "40%";
+    overlay.style.background = "rgba(0,0,0,0.85)";
+    overlay.style.color = '#eee';
+    overlay.style.zIndex = 9999;
+    overlay.style.fontFamily = "monospace";
+    overlay.style.overflowY = "auto";
+    overlay.style.padding = "1em";
+    overlay.style.borderTop = "2px solid #ccc";
+
+    let content = "<h3>Key Bindings</h3><ul>";
+    for (const key in bindings) {
+        content += `<li><b>${key}</b> — ${bindings[key]}</li>`;
+    }
+    content += "</ul><p>Press ESC to close</p>";
+    overlay.innerHTML = content;
+
+    document.body.appendChild(overlay);
+    window.overlays.help = overlay;
+
+    function remove() { overlay.remove(); window.overlays.help = null; document.removeEventListener("keydown", escHandler); }
+    function escHandler(e) { if (e.key === "Escape") remove(); }
+    overlay.addEventListener("click", remove);
+    document.addEventListener("keydown", escHandler);
+};
+"#
+);
 
         js
     }
