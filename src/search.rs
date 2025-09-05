@@ -25,47 +25,132 @@ window.searchState = {
   index: -1
 };
 
-window.clearHighlights = function() {
-  document.querySelectorAll(".pey-search-highlight").forEach(el => {
-    el.replaceWith(...el.childNodes);
+window.clearHighlights = function () {
+  const marks = document.querySelectorAll('mark.pey-search-highlight');
+  marks.forEach(mark => {
+    const parent = mark.parentNode;
+    if (!parent) return;
+    while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+    parent.removeChild(mark);
+    parent.normalize();
   });
   window.searchState.matches = [];
   window.searchState.index = -1;
 };
 
-window.searchHighlight = function(needle) {
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+window.searchHighlight = function (needle) {
   window.clearHighlights();
   if (!needle) return;
 
-  const regex = new RegExp(needle, "gi");
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  let node;
+  const root = document.body || document.documentElement;
+  if (!root) return;
 
-  while ((node = walker.nextNode())) {
-    if (regex.test(node.nodeValue)) {
-      const span = document.createElement("span");
-      span.innerHTML = node.nodeValue.replace(regex, m => `<mark class="pey-search-highlight">${m}</mark>`);
-      node.replaceWith(span);
-    }
+  const safe = escapeRegExp(needle);
+  const re = new RegExp(safe, 'gi');
+
+  const walker = document.createTreeWalker(
+    root,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        const text = node.nodeValue;
+        if (!text || !text.trim()) return NodeFilter.FILTER_REJECT;
+
+        const p = node.parentNode;
+        if (!p) return NodeFilter.FILTER_REJECT;
+
+        const tag = p.nodeName;
+        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (
+          p.closest(
+            '.pey-search-highlight, #pey-status, #help-overlay, #url-bar-overlay'
+          )
+        ) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    },
+    false
+  );
+
+  const textNodes = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    if (n.nodeValue.match(re)) textNodes.push(n);
   }
-  window.searchState.matches = Array.from(document.querySelectorAll(".pey-search-highlight"));
+
+  textNodes.forEach(node => {
+    const text = node.nodeValue;
+    let lastIndex = 0;
+    const frag = document.createDocumentFragment();
+
+    text.replace(re, (match, offset) => {
+      if (offset > lastIndex) {
+        frag.appendChild(
+          document.createTextNode(text.slice(lastIndex, offset))
+        );
+      }
+      const mark = document.createElement('mark');
+      mark.className = 'pey-search-highlight';
+      mark.textContent = match;
+      frag.appendChild(mark);
+
+      lastIndex = offset + match.length;
+      return match;
+    });
+
+    if (lastIndex < text.length) {
+      frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+
+    node.parentNode.replaceChild(frag, node);
+  });
+
+  window.searchState.matches = Array.from(
+    document.querySelectorAll('mark.pey-search-highlight')
+  );
   window.searchState.index = -1;
-};
 
-window.searchNext = function() {
+   if (window.searchState.matches.length) {
+     window.searchState.matches[0].scrollIntoView({ behavior: 'instant', block: 'center' });
+   }
+};
+window.searchNext = function () {
   if (!window.searchState.matches.length) return;
-  window.searchState.index = (window.searchState.index + 1) % window.searchState.matches.length;
+
+  window.searchState.matches.forEach(m => {
+    m.style.background = "yellow";
+  });
+
+  window.searchState.index =
+    (window.searchState.index + 1) % window.searchState.matches.length;
+
   const el = window.searchState.matches[window.searchState.index];
   el.scrollIntoView({ behavior: "smooth", block: "center" });
-  el.style.background = "orange";
+  el.style.background = "red";
 };
 
-window.searchPrev = function() {
+window.searchPrev = function () {
   if (!window.searchState.matches.length) return;
-  window.searchState.index = (window.searchState.index - 1 + window.searchState.matches.length) % window.searchState.matches.length;
+
+  window.searchState.matches.forEach(m => {
+    m.style.background = "yellow";
+  });
+
+  window.searchState.index =
+    (window.searchState.index - 1 + window.searchState.matches.length) %
+    window.searchState.matches.length;
+
   const el = window.searchState.matches[window.searchState.index];
   el.scrollIntoView({ behavior: "smooth", block: "center" });
-  el.style.background = "orange";
+  el.style.background = "red";
 };
 
 "#;
