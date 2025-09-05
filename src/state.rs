@@ -32,6 +32,7 @@ use crate::{
     statusbar::Statusbar,
     url::Url,
 };
+use arboard::Clipboard;
 use spdlog::{debug, error};
 use std::sync::mpsc::Sender;
 use tao::{
@@ -93,6 +94,7 @@ pub struct State {
     pub key_mode: KeyMode,
     pub cookie_mgr: CookieManager,
     pub key_mgr: KeybindingManager,
+    pub clipboard: Clipboard,
 }
 
 impl State {
@@ -101,6 +103,7 @@ impl State {
         event_loop: &EventLoop<T>,
         url: S,
     ) -> anyhow::Result<(Self, mpsc::Receiver<Action>, mpsc::Receiver<String>)> {
+        let clipboard = Clipboard::new().unwrap();
         let (cmd_tx, cmd_rx) = mpsc::channel::<Action>();
         let ipc_handler = make_ipc_handler(cmd_tx.clone());
 
@@ -150,6 +153,7 @@ impl State {
                 key_mode: KeyMode::Normal,
                 cookie_mgr,
                 key_mgr,
+                clipboard,
             },
             cmd_rx,
             nav_rx,
@@ -160,6 +164,7 @@ impl State {
 impl State {
     pub fn set_url<S: AsRef<str>>(&mut self, url: S) {
         self.history.push(url.as_ref());
+
         self.window.set_title(self.history.current());
     }
 
@@ -238,6 +243,8 @@ impl State {
     }
 
     pub fn change_url(&mut self, url: &str) {
+        self.set_url(url);
+        debug!("Changing url to {}", url);
         let script = format!(r#"window.location.href = "{}";"#, url);
         let _ = self.webview.evaluate_script(&script);
     }
@@ -249,6 +256,18 @@ impl State {
         } else {
             self.webview.evaluate_script("window.location.reload();")
         };
+    }
+
+    pub fn copy_url(&mut self) {
+        let url = self.history.current();
+        let _ = self.clipboard.set_text(url);
+    }
+
+    pub fn paste_url(&mut self) {
+        let url = self.clipboard.get_text().unwrap();
+        self.set_url(&url);
+        let script = format!(r#"window.location.href = "{}";"#, url);
+        let _ = self.webview.evaluate_script(&script);
     }
 }
 

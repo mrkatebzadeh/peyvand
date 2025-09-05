@@ -97,6 +97,8 @@ impl KeybindingManager {
             Action::SoftRefreshURL.to_string(),
             KeySequence::from_str("r"),
         );
+        normal.insert(Action::CopyURL.to_string(), KeySequence::from_str("uy"));
+        normal.insert(Action::PasteURL.to_string(), KeySequence::from_str("up"));
 
         bindings.insert(KeyMode::Normal, normal);
 

@@ -29,12 +29,12 @@ cargo run --release -- https://google.com
 - ✅ History stack for back/forward navigation
 - ✅ Customizable keybindings
 - ✅ Status bar for mode & command display
+- ✅ URL manipulation (change, copy, paste, reload)
 
 ---
 
 ## 🎯 Upcoming
 
-- ⬜ URL manipulation (change, copy, paste, reload)
 - ⬜ Search text within page
 - ⬜ Follow links with hints (like Vimium-style navigation)
 - ⬜ Configurable homepage

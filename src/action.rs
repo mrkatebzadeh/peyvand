@@ -46,6 +46,8 @@ pub enum Action {
     ChangeURL(String),
     HardRefreshURL,
     SoftRefreshURL,
+    CopyURL,
+    PasteURL,
 }
 
 impl Action {
@@ -73,6 +75,8 @@ impl Action {
             }
             Action::HardRefreshURL => state.refresh_url(true),
             Action::SoftRefreshURL => state.refresh_url(false),
+            Action::CopyURL => state.copy_url(),
+            Action::PasteURL => state.paste_url(),
 
             Action::Exit => {
                 state.exit();
