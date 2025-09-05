@@ -262,7 +262,13 @@ document.addEventListener("keydown", (e) => {
 
       window.updateStatus(window.appState.mode);
       e.preventDefault();
-    } else if (key.length === 1 && !e.ctrlKey && !e.metaKey) {
+    } else if (key === "Backspace") {
+        if (window.appState.commandBuffer && window.appState.commandBuffer.length > 0) {
+            window.appState.commandBuffer = window.appState.commandBuffer.slice(0, -1);
+            window.updateStatus(":" + window.appState.commandBuffer);
+        }
+        e.preventDefault();
+     }else if (key.length === 1 && !e.ctrlKey && !e.metaKey) {
       window.appState.commandBuffer = window.appState.commandBuffer || "";
       window.appState.commandBuffer += key;
 
@@ -272,22 +278,20 @@ document.addEventListener("keydown", (e) => {
     return;
   } else if (window.appState.mode === "Search") {
     if (key === "Enter") {
-      sendAction("search:" + window.appState.searchBuffer);
       window.appState.mode = "Normal";
+      sendAction("search:" + window.appState.searchBuffer);
       sendAction("normal-mode");
       window.updateStatus(window.appState.mode);
       e.preventDefault();
     } else if (key === "Backspace") {
         if (window.appState.searchBuffer && window.appState.searchBuffer.length > 0) {
             window.appState.searchBuffer = window.appState.searchBuffer.slice(0, -1);
-            window.searchHighlight(window.appState.searchBuffer);
             window.updateStatus("/" + window.appState.searchBuffer);
         }
         e.preventDefault();
      }else if (key.length === 1 && !e.ctrlKey && !e.metaKey) {
       window.appState.searchBuffer = window.appState.searchBuffer || "";
       window.appState.searchBuffer += key;
-      window.searchHighlight(window.appState.searchBuffer);
       window.updateStatus("/" + window.appState.searchBuffer);
       e.preventDefault();
     }

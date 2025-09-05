@@ -57,7 +57,7 @@ window.searchNext = function() {
   window.searchState.index = (window.searchState.index + 1) % window.searchState.matches.length;
   const el = window.searchState.matches[window.searchState.index];
   el.scrollIntoView({ behavior: "smooth", block: "center" });
-  el.style.background = "red";
+  el.style.background = "orange";
 };
 
 window.searchPrev = function() {
@@ -65,22 +65,15 @@ window.searchPrev = function() {
   window.searchState.index = (window.searchState.index - 1 + window.searchState.matches.length) % window.searchState.matches.length;
   const el = window.searchState.matches[window.searchState.index];
   el.scrollIntoView({ behavior: "smooth", block: "center" });
-  el.style.background = "red";
+  el.style.background = "orange";
 };
 
 "#;
 
 #[derive(Default)]
-pub struct SearchState {
-    pub needle: Option<String>,
-    pub current_index: usize,
-}
+pub struct Search {}
 
-impl SearchState {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+impl Search {
     pub fn get_js() -> &'static str {
         SEARCH_JS
     }

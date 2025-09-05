@@ -29,7 +29,7 @@ use crate::{
     cookie::CookieManager,
     history::History,
     key::{KeyMode, KeybindingManager},
-    search::{self, SearchState},
+    search::Search,
     statusbar::Statusbar,
     url::Url,
 };
@@ -59,6 +59,11 @@ fn make_ipc_handler(tx: Sender<Action>) -> impl Fn(Request<String>) + 'static {
                     error!("Unknown command: {}", cmd);
                 }
             };
+            return;
+        }
+        if let Some(search) = req.body().strip_prefix("search:") {
+            tx.send(Action::Search(search.to_string())).ok();
+            return;
         }
 
         let mut parts = req.body().splitn(2, ':');
@@ -76,7 +81,7 @@ fn make_ipc_handler(tx: Sender<Action>) -> impl Fn(Request<String>) + 'static {
                     tx.send(action).ok();
                 }
             },
-            Err(_) => eprintln!("Unknown action: {}", action_str),
+            Err(_) => error!("Unknown action: {}", action_str),
         }
     }
 }
@@ -96,7 +101,6 @@ pub struct State {
     pub cookie_mgr: CookieManager,
     pub key_mgr: KeybindingManager,
     pub clipboard: Clipboard,
-    pub search: SearchState,
 }
 
 impl State {
@@ -106,7 +110,6 @@ impl State {
         url: S,
     ) -> anyhow::Result<(Self, mpsc::Receiver<Action>, mpsc::Receiver<String>)> {
         let clipboard = Clipboard::new().unwrap();
-        let search = SearchState::new();
 
         let (cmd_tx, cmd_rx) = mpsc::channel::<Action>();
         let ipc_handler = make_ipc_handler(cmd_tx.clone());
@@ -133,10 +136,10 @@ impl State {
         let url_mgr = Url::new();
         let url_js = url_mgr.get_url();
 
-        let search_js = SearchState::get_js();
+        let search_js = Search::get_js();
 
         let inject = format!("{statusbar_js}\n{url_js}\n{search_js}\n{keybinding_js}");
-        // std::fs::write("inject.js", &inject).unwrap();
+        std::fs::write("inject.js", &inject).unwrap();
 
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
@@ -160,7 +163,6 @@ impl State {
                 cookie_mgr,
                 key_mgr,
                 clipboard,
-                search,
             },
             cmd_rx,
             nav_rx,
@@ -277,7 +279,7 @@ impl State {
     }
 
     pub fn search(&mut self, needle: &str) {
-        let script = format!("window.searchHighlight({:?});", needle);
+        let script = format!(r#"window.searchHighlight("{}");"#, needle);
         let _ = self.webview.evaluate_script(&script);
     }
 
