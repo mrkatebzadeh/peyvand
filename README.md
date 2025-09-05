@@ -38,6 +38,7 @@ cargo run --release -- https://google.com
 - ⬜ Search text within page
 - ⬜ Follow links with hints (like Vimium-style navigation)
 - ⬜ Configurable homepage
+- ⬜ Multi tab
 
 ---
 
