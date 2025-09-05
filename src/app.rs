@@ -20,7 +20,6 @@
 */
 
 use crate::action::Action;
-use crate::key::KeyMode;
 use crate::{args::Args, state::State};
 use spdlog::{debug, info};
 use std::sync::Mutex;

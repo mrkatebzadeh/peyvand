@@ -34,7 +34,6 @@ use crate::{
 };
 use spdlog::{debug, error};
 use std::sync::mpsc::Sender;
-use strum::IntoEnumIterator;
 use tao::{
     event_loop::EventLoop,
     window::{Window, WindowBuilder},
@@ -128,7 +127,7 @@ impl State {
         let url_js = url_mgr.get_url();
 
         let inject = format!("{statusbar_js}\n{url_js}\n{keybinding_js}");
-        std::fs::write("inject.js", &inject).unwrap();
+        // std::fs::write("inject.js", &inject).unwrap();
 
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
@@ -142,7 +141,7 @@ impl State {
         let cookie_mgr = CookieManager::new(args.cookiefile.clone(), args.cookie_policies.clone());
         cookie_mgr.load_cookies(&webview)?;
 
-        let history = History::new(url_js.as_ref());
+        let history = History::new(url_js);
         Ok((
             Self {
                 webview,
