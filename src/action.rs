@@ -25,7 +25,7 @@ use tao::event_loop::ControlFlow;
 
 use crate::{key::KeyMode, state::State};
 
-#[derive(AsRefStr, Default, Clone, Copy, Debug, EnumIter, EnumString, Display)]
+#[derive(AsRefStr, Default, Clone, Debug, EnumIter, EnumString, Display)]
 #[strum(serialize_all = "kebab-case")]
 pub enum Action {
     GoBack,
@@ -42,6 +42,8 @@ pub enum Action {
     NormalMode,
     InsertMode,
     CmdMode,
+    ShowURL,
+    ChangeURL(String),
 }
 
 impl Action {
@@ -59,6 +61,14 @@ impl Action {
             Action::InsertMode => state.set_key_mode(KeyMode::Insert),
             Action::CmdMode => state.set_key_mode(KeyMode::Cmd),
             Action::ShowHelp => state.show_help(),
+            Action::ShowURL => {
+                state.set_key_mode(KeyMode::Insert);
+                state.show_url();
+            }
+            Action::ChangeURL(url) => {
+                state.change_url(url);
+                state.set_key_mode(KeyMode::Normal);
+            }
             Action::Exit => {
                 state.exit();
                 *control_flow = ControlFlow::Exit;

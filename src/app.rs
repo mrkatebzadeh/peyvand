@@ -68,17 +68,8 @@ fn handle_event(event: Event<'_, ()>, control_flow: &mut ControlFlow) {
 
 fn dispatch_act(state: &Mutex<State>, control_flow: &mut ControlFlow, act: Action) {
     let mode = state.lock().unwrap().get_key_mode();
-    debug!("Action: {:#?}", act);
-
-    match mode {
-        KeyMode::Normal => act.apply(&mut state.lock().unwrap(), control_flow),
-        KeyMode::Insert | KeyMode::Cmd => {
-            if let Action::NormalMode = act {
-                act.apply(&mut state.lock().unwrap(), control_flow)
-            }
-        }
-        _ => unimplemented!(),
-    }
+    debug!("Action in {mode} mode: {:#?}", act);
+    act.apply(&mut state.lock().unwrap(), control_flow)
 }
 
 impl Application {

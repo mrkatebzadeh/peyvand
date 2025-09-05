@@ -29,6 +29,7 @@ mod key;
 mod signal;
 mod state;
 mod statusbar;
+mod url;
 
 use app::Application;
 use signal::setup_signal_handlers;

@@ -30,6 +30,7 @@ use crate::{
     history::History,
     key::{KeyMode, KeybindingManager},
     statusbar::Statusbar,
+    url::Url,
 };
 use spdlog::{debug, error};
 use std::sync::mpsc::Sender;
@@ -58,8 +59,23 @@ fn make_ipc_handler(tx: Sender<Action>) -> impl Fn(Request<String>) + 'static {
                 }
             };
         }
-        if let Some(action) = Action::iter().find(|a| a.as_ref() == req.body().as_str()) {
-            tx.send(action).ok();
+
+        let mut parts = req.body().splitn(2, ':');
+        let action_str = parts.next().unwrap();
+        let param = parts.next();
+
+        match action_str.parse::<Action>() {
+            Ok(action) => match action {
+                Action::ChangeURL(_) => {
+                    if let Some(url) = param {
+                        tx.send(Action::ChangeURL(url.to_string())).ok();
+                    }
+                }
+                _ => {
+                    tx.send(action).ok();
+                }
+            },
+            Err(_) => eprintln!("Unknown action: {}", action_str),
         }
     }
 }
@@ -108,8 +124,11 @@ impl State {
 
         let keybinding_js = key_mgr.export_full_js();
 
-        let inject = format!("{statusbar_js}\n{keybinding_js}");
-        // std::fs::write("inject.js", &inject).unwrap();
+        let url_mgr = Url::new();
+        let url_js = url_mgr.get_url();
+
+        let inject = format!("{statusbar_js}\n{url_js}\n{keybinding_js}");
+        std::fs::write("inject.js", &inject).unwrap();
 
         let builder = WebViewBuilder::new()
             .with_url(url.as_ref())
@@ -123,7 +142,7 @@ impl State {
         let cookie_mgr = CookieManager::new(args.cookiefile.clone(), args.cookie_policies.clone());
         cookie_mgr.load_cookies(&webview)?;
 
-        let history = History::new(url.as_ref());
+        let history = History::new(url_js.as_ref());
         Ok((
             Self {
                 webview,
@@ -210,6 +229,18 @@ impl State {
         let _ = self
             .webview
             .evaluate_script(&format!("window.showHelp({json})"));
+    }
+
+    pub fn show_url(&self) {
+        let url = self.history.current();
+        let _ = self
+            .webview
+            .evaluate_script(&format!(r#"window.showUrlBar("{url}")"#));
+    }
+
+    pub fn change_url(&mut self, url: &str) {
+        let script = format!(r#"window.location.href = "{}";"#, url);
+        let _ = self.webview.evaluate_script(&script);
     }
 }
 
