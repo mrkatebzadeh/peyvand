@@ -241,6 +241,15 @@ impl State {
         let script = format!(r#"window.location.href = "{}";"#, url);
         let _ = self.webview.evaluate_script(&script);
     }
+
+    pub fn refresh_url(&mut self, hard: bool) {
+        let _ = if hard {
+            self.webview
+                .evaluate_script("window.location.reload(true);")
+        } else {
+            self.webview.evaluate_script("window.location.reload();")
+        };
+    }
 }
 
 /* state.rs ends here */

@@ -44,6 +44,8 @@ pub enum Action {
     CmdMode,
     ShowURL,
     ChangeURL(String),
+    HardRefreshURL,
+    SoftRefreshURL,
 }
 
 impl Action {
@@ -69,6 +71,9 @@ impl Action {
                 state.change_url(url);
                 state.set_key_mode(KeyMode::Normal);
             }
+            Action::HardRefreshURL => state.refresh_url(true),
+            Action::SoftRefreshURL => state.refresh_url(false),
+
             Action::Exit => {
                 state.exit();
                 *control_flow = ControlFlow::Exit;

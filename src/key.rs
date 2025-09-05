@@ -89,6 +89,14 @@ impl KeybindingManager {
 
         normal.insert(Action::ShowHelp.to_string(), KeySequence::from_str("?"));
         normal.insert(Action::ShowURL.to_string(), KeySequence::from_str("go"));
+        normal.insert(
+            Action::HardRefreshURL.to_string(),
+            KeySequence::from_str("R"),
+        );
+        normal.insert(
+            Action::SoftRefreshURL.to_string(),
+            KeySequence::from_str("r"),
+        );
 
         bindings.insert(KeyMode::Normal, normal);
 
