@@ -36,6 +36,7 @@ pub enum Action {
     ScrollBottom,
     ScrollHalfUp,
     ScrollHalfDown,
+    ShowHelp,
     Exit,
     #[default]
     NormalMode,
@@ -57,6 +58,7 @@ impl Action {
             Action::NormalMode => state.set_key_mode(KeyMode::Normal),
             Action::InsertMode => state.set_key_mode(KeyMode::Insert),
             Action::CmdMode => state.set_key_mode(KeyMode::Cmd),
+            Action::ShowHelp => state.show_help(),
             Action::Exit => {
                 state.exit();
                 *control_flow = ControlFlow::Exit;

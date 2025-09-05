@@ -50,6 +50,9 @@ fn make_ipc_handler(tx: Sender<Action>) -> impl Fn(Request<String>) + 'static {
                 "q" => {
                     tx.send(Action::Exit).ok();
                 }
+                "h" | "help" => {
+                    tx.send(Action::ShowHelp).ok();
+                }
                 _ => {
                     error!("Unknown command: {}", cmd);
                 }
@@ -74,6 +77,7 @@ pub struct State {
     pub history: History,
     pub key_mode: KeyMode,
     pub cookie_mgr: CookieManager,
+    pub key_mgr: KeybindingManager,
 }
 
 impl State {
@@ -100,9 +104,9 @@ impl State {
         let statusbar = Statusbar::new();
         let statusbar_js = statusbar.get_statusbar();
         // let config: KeybindingConfig = toml::from_str(toml_str).unwrap();
-        let manager = KeybindingManager::new(None).unwrap();
+        let key_mgr = KeybindingManager::new(None).unwrap();
 
-        let keybinding_js = manager.export_full_js();
+        let keybinding_js = key_mgr.export_full_js();
 
         let inject = format!("{statusbar_js}\n{keybinding_js}");
         // std::fs::write("inject.js", &inject).unwrap();
@@ -127,6 +131,7 @@ impl State {
                 history,
                 key_mode: KeyMode::Normal,
                 cookie_mgr,
+                key_mgr,
             },
             cmd_rx,
             nav_rx,
@@ -159,7 +164,7 @@ impl State {
     pub fn set_key_mode(&mut self, mode: KeyMode) {
         self.key_mode = mode;
 
-        let script = format!("window.appState = {{ mode: '{}' }};", mode);
+        let script = format!("window.appState = {{ mode: '{}' }};", mode.as_ref());
 
         debug!("Mode: {:#?}", mode);
         let _ = self.webview.evaluate_script(&script);
@@ -197,6 +202,14 @@ impl State {
 
     pub fn exit(&self) {
         let _ = self.cookie_mgr.save_cookies(&self.webview);
+    }
+
+    pub fn show_help(&self) {
+        let map = self.key_mgr.get_help_map(self.key_mode);
+        let json = serde_json::to_string(&map).unwrap();
+        let _ = self
+            .webview
+            .evaluate_script(&format!("window.showHelp({json})"));
     }
 }
 
